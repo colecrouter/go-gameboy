@@ -15,17 +15,18 @@ const CLOCK_DELAY = time.Second / CLOCK_SPEED
 
 type GameBoy struct {
 	display   monochrome.TerminalDisplay
-	cpu       *lr35902.LR35902
 	memoryBus *memory.Bus
+	cpu       *lr35902.LR35902
 
 	cpuTicker     *time.Ticker
 	displayTicker *time.Ticker
 }
 
-func NewGameBoy() GameBoy {
-	gb := GameBoy{}
+func NewGameBoy() *GameBoy {
+	gb := &GameBoy{}
+	gb.memoryBus = &memory.Bus{}
 
-	gb.cpu = lr35902.NewLR35902(nil)
+	gb.cpu = lr35902.NewLR35902(gb.memoryBus)
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
 	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx
@@ -35,10 +36,11 @@ func NewGameBoy() GameBoy {
 	gb.memoryBus.AddDevice(0xD000, 0xDFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
 	gb.memoryBus.AddDevice(0xE000, 0xFDFF, &memory.Memory{Buffer: make([]byte, 0x1E00)}) // ECHO RAM
 	gb.memoryBus.AddDevice(0xFE00, 0xFE9F, &memory.Memory{Buffer: make([]byte, 0xA0)})   // OAM
-	gb.memoryBus.AddDevice(0xFEA0, 0xFEFF, nil)                                          // Unusable Memory
-	gb.memoryBus.AddDevice(0xFF00, 0xFF7F, &memory.Memory{Buffer: make([]byte, 0x80)})   // I/O Registers
-	gb.memoryBus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)})   // High RAM
-	gb.memoryBus.AddDevice(0xFFFF, 0xFFFF, nil)                                          // Interrupt Enable Register
+	// https://gbdev.io/pandocs/Memory_Map.html#fea0feff-range
+	gb.memoryBus.AddDevice(0xFEA0, 0xFEFF, &memory.Memory{Buffer: make([]byte, 0x60)}) // Unusable Memory
+	gb.memoryBus.AddDevice(0xFF00, 0xFF7F, &memory.Memory{Buffer: make([]byte, 0x80)}) // I/O Registers
+	gb.memoryBus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
+	gb.memoryBus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
 	return gb
 }

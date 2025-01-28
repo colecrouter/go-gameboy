@@ -9,11 +9,12 @@ import (
 
 // LR35902 is the original GameBoy CPU
 type LR35902 struct {
-	Registers struct {
+	initialized bool
+	registers   struct {
 		A, B, C, D, E, H, L, Flags uint8
 		SP, PC                     uint16
 	}
-	Bus           memory.Device
+	bus           memory.Device
 	done, doClock chan struct{}
 	clocking      chan uint8
 }
@@ -26,14 +27,18 @@ const (
 )
 
 func (c *LR35902) setFlags(zero int, subtract int, halfCarry int, carry int) {
+	if !c.initialized {
+		panic("CPU not initialized")
+	}
+
 	flags := []int{zero, subtract, halfCarry, carry}
 	for i, v := range flags {
 		offset := uint8(7 - i)
 		switch v {
 		case set:
-			c.Registers.Flags |= (1 << offset)
+			c.registers.Flags |= (1 << offset)
 		case reset:
-			c.Registers.Flags |= (0 << offset)
+			c.registers.Flags |= (0 << offset)
 		case leave:
 		}
 	}
@@ -41,12 +46,16 @@ func (c *LR35902) setFlags(zero int, subtract int, halfCarry int, carry int) {
 
 // Clock emulates a clock cycle on the CPU
 func (c *LR35902) Clock() {
+	if !c.initialized {
+		panic("CPU not initialized")
+	}
+
 	// Get instruction
-	op := c.Bus.Read(c.Registers.PC)
-	log.Printf("0x%X: 0x%X\n", c.Registers.PC, op)
+	op := c.bus.Read(c.registers.PC)
+	log.Printf("0x%X: 0x%X\n", c.registers.PC, op)
 
 	// Increment PC
-	c.Registers.PC++
+	c.registers.PC++
 
 	// Run instruction
 	switch op {
@@ -164,20 +173,19 @@ func (c *LR35902) Clock() {
 }
 
 func NewLR35902(bus *memory.Bus) *LR35902 {
-	cpu := LR35902{}
+	if bus == nil {
+		panic("Bus is nil")
+	}
 
-	cpu.Registers.PC = 0x0100
+	cpu := &LR35902{initialized: true}
+
+	cpu.registers.PC = 0x0100
 	cpu.done = make(chan struct{})
 	cpu.clocking = make(chan uint8)
 	cpu.doClock = make(chan struct{}, 1)
+	cpu.bus = bus
 
-	if bus == nil {
-		cpu.Bus = &memory.Bus{}
-	} else {
-		cpu.Bus = bus
-	}
-
-	return &cpu
+	return cpu
 }
 
 func toLong(a uint8, b uint8) uint16 {

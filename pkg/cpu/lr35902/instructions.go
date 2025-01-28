@@ -232,36 +232,36 @@ func (c *LR35902) ldBcD16() {
 	c.doClock <- struct{}{}
 	a2 := <-c.clocking
 	a := toLong(a1, a2)
-	c.ldi16(&c.Registers.B, &c.Registers.C, &a)
+	c.ldi16(&c.registers.B, &c.registers.C, &a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldpBcA() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Bus.Write(uint16(c.Registers.C)<<8|uint16(c.Registers.B), c.Registers.A)
+	c.bus.Write(uint16(c.registers.C)<<8|uint16(c.registers.B), c.registers.A)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incBc() {
-	c.inc16(&c.Registers.B, &c.Registers.C)
+	c.inc16(&c.registers.B, &c.registers.C)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incB() {
-	c.inc8(&c.Registers.B)
+	c.inc8(&c.registers.B)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decB() {
-	c.dec8(&c.Registers.B)
+	c.dec8(&c.registers.B)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldBD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ldi8(&c.Registers.B, &a)
+	c.ldi8(&c.registers.B, &a)
 	c.done <- struct{}{}
 }
 
@@ -269,13 +269,13 @@ func (c *LR35902) rlcA() {
 	// TODO fix
 	// msb
 	carry := leave
-	if c.Registers.A>>7 == 0 {
+	if c.registers.A>>7 == 0 {
 		carry = reset
 	} else {
 		carry = set
 	}
 
-	bits.RotateLeft8(c.Registers.A, 1)
+	bits.RotateLeft8(c.registers.A, 1)
 	c.setFlags(reset, reset, reset, carry)
 	c.done <- struct{}{}
 }
@@ -290,59 +290,59 @@ func (c *LR35902) ldpA16SP() {
 	c.doClock <- struct{}{}
 	<-c.clocking
 	a := toLong(a1, a2)
-	c.Bus.Write(a, uint8(c.Registers.SP<<8))
-	c.Bus.Write(a+1, uint8(c.Registers.SP))
+	c.bus.Write(a, uint8(c.registers.SP<<8))
+	c.bus.Write(a+1, uint8(c.registers.SP))
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) addHlBc() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.add16(&c.Registers.H, &c.Registers.L, &c.Registers.B, &c.Registers.C)
+	c.add16(&c.registers.H, &c.registers.L, &c.registers.B, &c.registers.C)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldApBc() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Registers.A = c.Bus.Read(uint16(c.Registers.C)<<8 | uint16(c.Registers.B))
+	c.registers.A = c.bus.Read(uint16(c.registers.C)<<8 | uint16(c.registers.B))
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decBc() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.dec16(&c.Registers.B, &c.Registers.C)
+	c.dec16(&c.registers.B, &c.registers.C)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incC() {
-	c.inc8(&c.Registers.C)
+	c.inc8(&c.registers.C)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decC() {
-	c.dec8(&c.Registers.C)
+	c.dec8(&c.registers.C)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldCD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ld8(&c.Registers.C, &a)
+	c.ld8(&c.registers.C, &a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) rrcA() {
 	// msb
 	carry := leave
-	if c.Registers.A>>7 == 0 {
+	if c.registers.A>>7 == 0 {
 		carry = reset
 	} else {
 		carry = set
 	}
 
-	bits.RotateLeft8(c.Registers.A, -1)
+	bits.RotateLeft8(c.registers.A, -1)
 	c.setFlags(reset, reset, reset, carry)
 	c.done <- struct{}{}
 }
@@ -360,36 +360,36 @@ func (c *LR35902) ldDeD16() {
 	c.doClock <- struct{}{}
 	a2 := <-c.clocking
 	a := toLong(a1, a2)
-	c.ldi16(&c.Registers.D, &c.Registers.E, &a)
+	c.ldi16(&c.registers.D, &c.registers.E, &a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldpDeA() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Bus.Write(uint16(c.Registers.E)<<8|uint16(c.Registers.D), c.Registers.A)
+	c.bus.Write(uint16(c.registers.E)<<8|uint16(c.registers.D), c.registers.A)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incDe() {
-	c.inc16(&c.Registers.D, &c.Registers.E)
+	c.inc16(&c.registers.D, &c.registers.E)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incD() {
-	c.inc8(&c.Registers.D)
+	c.inc8(&c.registers.D)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decD() {
-	c.dec8(&c.Registers.D)
+	c.dec8(&c.registers.D)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldDD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ldi8(&c.Registers.D, &a)
+	c.ldi8(&c.registers.D, &a)
 	c.done <- struct{}{}
 }
 
@@ -397,13 +397,13 @@ func (c *LR35902) rlA() {
 	// TODO FIX
 	// msb
 	carry := leave
-	if c.Registers.A>>7 == 0 {
+	if c.registers.A>>7 == 0 {
 		carry = reset
 	} else {
 		carry = set
 	}
 
-	bits.RotateLeft8(c.Registers.A, 1)
+	bits.RotateLeft8(c.registers.A, 1)
 	c.setFlags(reset, reset, reset, carry)
 	c.done <- struct{}{}
 }
@@ -413,45 +413,45 @@ func (c *LR35902) jrS8() {
 	a := <-c.clocking
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Registers.PC += uint16(a)
+	c.registers.PC += uint16(a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) addHlDe() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.add16(&c.Registers.H, &c.Registers.L, &c.Registers.D, &c.Registers.E)
+	c.add16(&c.registers.H, &c.registers.L, &c.registers.D, &c.registers.E)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldApDe() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Registers.A = c.Bus.Read(uint16(c.Registers.E)<<8 | uint16(c.Registers.D))
+	c.registers.A = c.bus.Read(uint16(c.registers.E)<<8 | uint16(c.registers.D))
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decDe() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.dec16(&c.Registers.D, &c.Registers.E)
+	c.dec16(&c.registers.D, &c.registers.E)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incE() {
-	c.inc8(&c.Registers.E)
+	c.inc8(&c.registers.E)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decE() {
-	c.dec8(&c.Registers.E)
+	c.dec8(&c.registers.E)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldED8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ld8(&c.Registers.E, &a)
+	c.ld8(&c.registers.E, &a)
 	c.done <- struct{}{}
 }
 
@@ -459,13 +459,13 @@ func (c *LR35902) rrA() {
 	// TODO fix
 	// msb
 	carry := leave
-	if c.Registers.A>>7 == 0 {
+	if c.registers.A>>7 == 0 {
 		carry = reset
 	} else {
 		carry = set
 	}
 
-	bits.RotateLeft8(c.Registers.A, -1)
+	bits.RotateLeft8(c.registers.A, -1)
 	c.setFlags(reset, reset, reset, carry)
 	c.done <- struct{}{}
 }
@@ -475,7 +475,7 @@ func (c *LR35902) jrNzS8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
 	if !c.ReadFlag(0) {
-		c.Registers.PC += uint16(a)
+		c.registers.PC += uint16(a)
 		<-c.clocking
 	}
 	c.done <- struct{}{}
@@ -487,37 +487,37 @@ func (c *LR35902) ldHlD16() {
 	c.doClock <- struct{}{}
 	a2 := <-c.clocking
 	a := toLong(a1, a2)
-	c.ldi16(&c.Registers.H, &c.Registers.L, &a)
+	c.ldi16(&c.registers.H, &c.registers.L, &a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldpHlA() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Bus.Write(toLong(c.Registers.H, c.Registers.L), c.Registers.A)
-	c.inc16(&c.Registers.L, &c.Registers.H)
+	c.bus.Write(toLong(c.registers.H, c.registers.L), c.registers.A)
+	c.inc16(&c.registers.L, &c.registers.H)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incHl() {
-	c.inc16(&c.Registers.H, &c.Registers.L)
+	c.inc16(&c.registers.H, &c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incH() {
-	c.inc8(&c.Registers.H)
+	c.inc8(&c.registers.H)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decH() {
-	c.dec8(&c.Registers.H)
+	c.dec8(&c.registers.H)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldHD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ldi8(&c.Registers.H, &a)
+	c.ldi8(&c.registers.H, &a)
 	c.done <- struct{}{}
 }
 
@@ -531,7 +531,7 @@ func (c *LR35902) jrZS8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
 	if c.ReadFlag(0) {
-		c.Registers.PC += uint16(a)
+		c.registers.PC += uint16(a)
 		<-c.clocking
 	}
 	c.done <- struct{}{}
@@ -540,14 +540,14 @@ func (c *LR35902) jrZS8() {
 func (c *LR35902) addHlHl() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.add16(&c.Registers.H, &c.Registers.L, &c.Registers.H, &c.Registers.L)
+	c.add16(&c.registers.H, &c.registers.L, &c.registers.H, &c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldApHlp() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Registers.A = c.Bus.Read(uint16(c.Registers.E)<<8 | uint16(c.Registers.D))
+	c.registers.A = c.bus.Read(uint16(c.registers.E)<<8 | uint16(c.registers.D))
 	c.incHl()
 	c.done <- struct{}{}
 }
@@ -555,29 +555,29 @@ func (c *LR35902) ldApHlp() {
 func (c *LR35902) decHl() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.dec16(&c.Registers.H, &c.Registers.L)
+	c.dec16(&c.registers.H, &c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incL() {
-	c.inc8(&c.Registers.L)
+	c.inc8(&c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decL() {
-	c.dec8(&c.Registers.L)
+	c.dec8(&c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldLD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	c.ld8(&c.Registers.L, &a)
+	c.ld8(&c.registers.L, &a)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) cpl() {
-	c.Registers.A = ^c.Registers.A
+	c.registers.A = ^c.registers.A
 	c.setFlags(leave, set, set, leave)
 	c.done <- struct{}{}
 }
@@ -587,7 +587,7 @@ func (c *LR35902) jrNcS8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
 	if !c.ReadFlag(3) {
-		c.Registers.PC += uint16(a)
+		c.registers.PC += uint16(a)
 		<-c.clocking
 	}
 	c.done <- struct{}{}
@@ -599,44 +599,44 @@ func (c *LR35902) ldSpD16() {
 	c.doClock <- struct{}{}
 	a2 := <-c.clocking
 	a := toLong(a1, a2)
-	c.Registers.SP = a // TODO is this broken?
+	c.registers.SP = a // TODO is this broken?
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldnHlA() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.Bus.Write(toLong(c.Registers.H, c.Registers.L), c.Registers.A)
-	c.dec16(&c.Registers.H, &c.Registers.L)
+	c.bus.Write(toLong(c.registers.H, c.registers.L), c.registers.A)
+	c.dec16(&c.registers.H, &c.registers.L)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incSp() {
-	c.Registers.SP++
+	c.registers.SP++
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) incpHl() {
-	addr := toLong(c.Registers.H, c.Registers.L)
-	value := c.Bus.Read(addr)
+	addr := toLong(c.registers.H, c.registers.L)
+	value := c.bus.Read(addr)
 	c.inc8(&value)
-	c.Bus.Write(addr, value)
+	c.bus.Write(addr, value)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) decpHl() {
-	addr := toLong(c.Registers.H, c.Registers.L)
-	value := c.Bus.Read(addr)
+	addr := toLong(c.registers.H, c.registers.L)
+	value := c.bus.Read(addr)
 	c.dec8(&value)
-	c.Bus.Write(addr, value)
+	c.bus.Write(addr, value)
 	c.done <- struct{}{}
 }
 
 func (c *LR35902) ldpHlD8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
-	addr := c.Bus.Read(toLong(c.Registers.H, c.Registers.L))
-	value := c.Bus.Read(uint16(addr))
+	addr := c.bus.Read(toLong(c.registers.H, c.registers.L))
+	value := c.bus.Read(uint16(addr))
 	c.ldi8(&value, &a)
 	c.done <- struct{}{}
 }
@@ -651,7 +651,7 @@ func (c *LR35902) jrCS8() {
 	c.doClock <- struct{}{}
 	a := <-c.clocking
 	if c.ReadFlag(3) {
-		c.Registers.PC += uint16(a)
+		c.registers.PC += uint16(a)
 		<-c.clocking
 	}
 	c.done <- struct{}{}
@@ -660,6 +660,6 @@ func (c *LR35902) jrCS8() {
 func (c *LR35902) addHlSp() {
 	c.doClock <- struct{}{}
 	<-c.clocking
-	c.add16s1(&c.Registers.H, &c.Registers.L, &c.Registers.SP)
+	c.add16s1(&c.registers.H, &c.registers.L, &c.registers.SP)
 	c.done <- struct{}{}
 }
