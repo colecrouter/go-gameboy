@@ -1,6 +1,8 @@
 package monochrome
 
 import (
+	"fmt"
+
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 )
@@ -14,18 +16,9 @@ const TILES_WIDTH = WIDTH / 8
 const TILES_HEIGHT = HEIGHT / 8
 
 type TerminalDisplay struct {
-	vram   *memory.Device
-	buffer [HEIGHT][WIDTH]uint8
-}
-
-func (t *TerminalDisplay) Connect(vram memory.Device) {
-	t.vram = &vram
-
-	for y := 0; y < HEIGHT; y++ {
-		for x := 0; x < WIDTH; x++ {
-			t.buffer[y][x] = 0
-		}
-	}
+	initialized bool
+	vram        *memory.Device
+	buffer      [HEIGHT][WIDTH]uint8
 }
 
 func (t *TerminalDisplay) populateBuffer() {
@@ -56,10 +49,14 @@ func (t *TerminalDisplay) populateBuffer() {
 }
 
 func (t *TerminalDisplay) Clock() {
+	if !t.initialized {
+		panic("TerminalDisplay not initialized")
+	}
+
 	t.populateBuffer()
 
 	// Clear the screen
-	print("\033[H\033[2J")
+	fmt.Print("\033c")
 
 	// Print the buffer to the terminal
 	for y := 0; y < HEIGHT; y++ {
@@ -78,4 +75,18 @@ func (t *TerminalDisplay) Clock() {
 		}
 		print("\n")
 	}
+}
+
+func NewTerminalDisplay(vram memory.Device) *TerminalDisplay {
+	t := &TerminalDisplay{initialized: true}
+
+	t.vram = &vram
+
+	for y := 0; y < HEIGHT; y++ {
+		for x := 0; x < WIDTH; x++ {
+			t.buffer[y][x] = 0
+		}
+	}
+
+	return t
 }

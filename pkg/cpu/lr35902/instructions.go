@@ -2,7 +2,6 @@ package lr35902
 
 import (
 	"encoding/binary"
-	"log"
 	"math/bits"
 )
 
@@ -350,7 +349,7 @@ func (c *LR35902) rrcA() {
 // 0x1x
 func (c *LR35902) stop() {
 	// TODO
-	log.Println("stop")
+	// log.Println("stop")
 	c.done <- struct{}{}
 }
 

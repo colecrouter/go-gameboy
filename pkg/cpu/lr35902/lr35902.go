@@ -2,7 +2,6 @@ package lr35902
 
 import (
 	"encoding/binary"
-	"log"
 
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 )
@@ -52,7 +51,7 @@ func (c *LR35902) Clock() {
 
 	// Get instruction
 	op := c.bus.Read(c.registers.PC)
-	log.Printf("0x%X: 0x%X\n", c.registers.PC, op)
+	// log.Printf("0x%X: 0x%X\n", c.registers.PC, op)
 
 	// Increment PC
 	c.registers.PC++

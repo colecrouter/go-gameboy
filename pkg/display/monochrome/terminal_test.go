@@ -26,8 +26,7 @@ func TestTileColor(t *testing.T) {
 	}
 
 	// Create new TerminalDisplay instance
-	terminal := &TerminalDisplay{}
-	terminal.Connect(&vram)
+	terminal := NewTerminalDisplay(&vram)
 
 	// Draw
 	terminal.Clock()
