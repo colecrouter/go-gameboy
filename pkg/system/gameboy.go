@@ -16,7 +16,7 @@ const CLOCK_DELAY = time.Second / CLOCK_SPEED
 type GameBoy struct {
 	display   monochrome.TerminalDisplay
 	cpu       *lr35902.LR35902
-	memoryBus memory.Bus
+	memoryBus *memory.Bus
 
 	cpuTicker     *time.Ticker
 	displayTicker *time.Ticker
@@ -25,10 +25,10 @@ type GameBoy struct {
 func NewGameBoy() GameBoy {
 	gb := GameBoy{}
 
-	gb.cpu = lr35902.NewLR35902(&gb.memoryBus)
+	gb.cpu = lr35902.NewLR35902(nil)
 
-	gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
-	gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx
+	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
+	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx
 	gb.memoryBus.AddDevice(0x8000, 0x9FFF, &vram.VRAM{})                                 // VRAM
 	gb.memoryBus.AddDevice(0xA000, 0xBFFF, &memory.Memory{Buffer: make([]byte, 0x2000)}) // External RAM
 	gb.memoryBus.AddDevice(0xC000, 0xCFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
@@ -60,7 +60,7 @@ func (gb *GameBoy) Step() {
 
 func (gb *GameBoy) Reset() {
 	gb.Stop()
-	gb.cpu = lr35902.NewLR35902(&gb.memoryBus)
+	gb.cpu = lr35902.NewLR35902(gb.memoryBus)
 }
 
 func (gb *GameBoy) InsertCartridge(rom *gamepak.GamePak) {

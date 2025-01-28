@@ -13,7 +13,6 @@ type LR35902 struct {
 		A, B, C, D, E, H, L, Flags uint8
 		SP, PC                     uint16
 	}
-	Instructions  []Instruction
 	Bus           memory.Device
 	done, doClock chan struct{}
 	clocking      chan uint8
@@ -38,21 +37,6 @@ func (c *LR35902) setFlags(zero int, subtract int, halfCarry int, carry int) {
 		case leave:
 		}
 	}
-}
-
-// Get a specific flag. Z=0, S=1, H=2, C=3
-func (c *LR35902) getFlag(which int) bool {
-	switch which {
-	case 0:
-		return c.Registers.Flags&1 == 1
-	case 1:
-		return c.Registers.Flags&2 == 1
-	case 2:
-		return c.Registers.Flags&4 == 1
-	case 3:
-		return c.Registers.Flags&8 == 1
-	}
-	return false
 }
 
 // Clock emulates a clock cycle on the CPU
@@ -179,14 +163,19 @@ func (c *LR35902) Clock() {
 	}
 }
 
-func NewLR35902(bus memory.Device) *LR35902 {
+func NewLR35902(bus *memory.Bus) *LR35902 {
 	cpu := LR35902{}
 
-	cpu.Bus = bus
 	cpu.Registers.PC = 0x0100
 	cpu.done = make(chan struct{})
 	cpu.clocking = make(chan uint8)
 	cpu.doClock = make(chan struct{}, 1)
+
+	if bus == nil {
+		cpu.Bus = &memory.Bus{}
+	} else {
+		cpu.Bus = bus
+	}
 
 	return &cpu
 }

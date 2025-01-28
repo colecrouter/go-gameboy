@@ -11,13 +11,6 @@ func (c *LR35902) ReadFlag(flag int) bool {
 	return false
 }
 
-// Instruction represents an instruction, as presented by the CPU
-type Instruction struct {
-	disassembly string
-	parameters  uint8
-	execute     func()
-}
-
 /*
 	Helper functions
 */

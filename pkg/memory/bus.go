@@ -16,14 +16,16 @@ func (b *Bus) AddDevice(start uint16, end uint16, device Device) {
 
 func (b *Bus) Read(addr uint16) byte {
 	for _, mapping := range b.mapping {
+		println("Checking", mapping.Start, mapping.End)
 		if addr >= mapping.Start && addr <= mapping.End {
+			println("Reading from device", mapping.Device, "at address", addr)
 			// Get adjusted address
 			addr -= mapping.Start
 
 			return (*mapping.Device).Read(addr)
 		}
 	}
-	return 0
+	panic("No device found for address")
 }
 
 func (b *Bus) Write(addr uint16, data byte) {
