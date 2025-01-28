@@ -17,6 +17,7 @@ func main() {
 	}
 
 	game := gamepak.NewGamePak(f)
+	game.Title()
 
 	gb.InsertCartridge(game)
 

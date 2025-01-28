@@ -1,5 +1,10 @@
 package gamepak
 
+import (
+	"log"
+	"os"
+)
+
 type GamePak struct {
 	initialized bool
 	buffer      []byte
@@ -21,6 +26,15 @@ func (g *GamePak) Write(addr uint16, data uint8) {
 }
 
 func NewGamePak(b []byte) *GamePak {
+	// Load bootrom
+	boot, err := os.ReadFile("dmg_boot.bin")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Copy bootrom to first 0x100 bytes of buffer
+	copy(b[:0x100], boot)
+
 	gp := &GamePak{buffer: b, initialized: true}
 	return gp
 }

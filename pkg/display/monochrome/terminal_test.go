@@ -3,7 +3,9 @@ package monochrome
 import (
 	"testing"
 
+	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
+	"github.com/colecrouter/gameboy-go/pkg/processor/ppu"
 )
 
 var lines = [16]uint8{0x3c, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x5e, 0x7e, 0x0a, 0x7c, 0x56, 0x38, 0x7c}
@@ -20,13 +22,22 @@ var buffer = [16][16]uint8{
 
 func TestTileColor(t *testing.T) {
 	// Create new VRAM instance
-	vram := vram.VRAM{}
+	vram := &vram.VRAM{}
 	for i, line := range lines {
 		vram.Write(uint16(i), line)
 	}
 
 	// Create new TerminalDisplay instance
-	terminal := NewTerminalDisplay(&vram)
+	terminal := NewTerminalDisplay()
+
+	// Create new PPU instance
+	oam := &memory.OAM{}
+	ppuInstance := ppu.NewPPU(vram, oam, terminal)
+
+	for i := 0; i < ppu.TotalCyclesPerLine*ppu.TotalLinesPerFrame; i++ {
+		ppuInstance.Clock()
+	}
+	ppuInstance.Clock()
 
 	// Draw
 	terminal.Clock()
