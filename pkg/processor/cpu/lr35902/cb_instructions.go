@@ -86,107 +86,50 @@ func generateCbInstructions() map[uint8]instruction {
 		// Each entry will be the LSB e.g. 0x01, 0x02, 0x03, etc.
 		msb := uint8(i) << 4
 
-		CBInstructions[msb+0x00] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.b, true, true)
-			},
+		// Generate the first half of the instructions
+		for j, gen := range firstHalfCbInstructionsHelper {
+			if j == 6 {
+				CBInstructions[msb+0x06] = instruction{
+					c: 16,
+					op: func(c *LR35902) {
+						addr := toRegisterPair(c.registers.h, c.registers.l)
+						val := c.bus.Read(addr)
+						c.rotate(&val, true, true)
+						c.bus.Write(addr, val)
+					},
+				}
+				continue
+			}
+
+			CBInstructions[msb+uint8(j)] = instruction{
+				c: 8,
+				op: func(c *LR35902) {
+					gen(&c.registers.b)(c)
+				},
+			}
 		}
-		CBInstructions[msb+0x01] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.c, true, false)
-			},
-		}
-		CBInstructions[msb+0x02] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.d, true, true)
-			},
-		}
-		CBInstructions[msb+0x03] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.e, true, true)
-			},
-		}
-		CBInstructions[msb+0x04] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.h, true, true)
-			},
-		}
-		CBInstructions[msb+0x05] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.l, true, true)
-			},
-		}
-		CBInstructions[msb+0x06] = instruction{
-			c: 16,
-			op: func(c *LR35902) {
-				addr := toRegisterPair(c.registers.h, c.registers.l)
-				val := c.bus.Read(addr)
-				c.rotate(&val, true, true)
-				c.bus.Write(addr, val)
-			},
-		}
-		CBInstructions[msb+0x07] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.a, true, true)
-			},
-		}
-		CBInstructions[msb+0x08] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.b, false, true)
-			},
-		}
-		CBInstructions[msb+0x09] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.c, false, false)
-			},
-		}
-		CBInstructions[msb+0x0A] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.d, false, true)
-			},
-		}
-		CBInstructions[msb+0x0B] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.e, false, true)
-			},
-		}
-		CBInstructions[msb+0x0C] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.h, false, true)
-			},
-		}
-		CBInstructions[msb+0x0D] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.l, false, true)
-			},
-		}
-		CBInstructions[msb+0x0E] = instruction{
-			c: 16,
-			op: func(c *LR35902) {
-				addr := toRegisterPair(c.registers.h, c.registers.l)
-				val := c.bus.Read(addr)
-				c.rotate(&val, false, true)
-				c.bus.Write(addr, val)
-			},
-		}
-		CBInstructions[msb+0x0F] = instruction{
-			c: 8,
-			op: func(c *LR35902) {
-				c.rotate(&c.registers.a, false, true)
-			},
+
+		// Generate the second half of the instructions
+		for j, gen := range secondHalfCbInstructionsHelper {
+			if j == 6 {
+				CBInstructions[msb+0x16] = instruction{
+					c: 16,
+					op: func(c *LR35902) {
+						addr := toRegisterPair(c.registers.h, c.registers.l)
+						val := c.bus.Read(addr)
+						c.shift(&val, false)
+						c.bus.Write(addr, val)
+					},
+				}
+				continue
+			}
+
+			CBInstructions[msb+0x08+uint8(j)] = instruction{
+				c: 8,
+				op: func(c *LR35902) {
+					gen(&c.registers.b)(c)
+				},
+			}
 		}
 	}
 

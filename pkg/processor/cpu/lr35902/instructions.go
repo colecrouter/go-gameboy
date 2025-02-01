@@ -14,7 +14,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD (BC),A
 	0x02: {c: 8, op: func(c *LR35902) {
-		address := uint16(c.registers.b)<<8 | uint16(c.registers.c)
+		address := toRegisterPair(c.registers.b, c.registers.c)
 		c.bus.Write(address, c.registers.a)
 	}},
 	// INC BC
@@ -84,8 +84,8 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD (DE),A
 	0x12: {c: 8, op: func(c *LR35902) {
-		address := uint16(c.registers.d)<<8 | uint16(c.registers.e)
-		c.bus.Write(address, c.registers.a)
+		addr := toRegisterPair(c.registers.d, c.registers.e)
+		c.bus.Write(addr, c.registers.a)
 	}},
 	// INC DE
 	0x13: {c: 8, op: func(c *LR35902) {
@@ -117,8 +117,8 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD A,(DE)
 	0x1A: {c: 8, op: func(c *LR35902) {
-		address := uint16(c.registers.d)<<8 | uint16(c.registers.e)
-		c.registers.a = c.bus.Read(address)
+		addr := toRegisterPair(c.registers.d, c.registers.e)
+		c.registers.a = c.bus.Read(addr)
 	}},
 	// DEC DE
 	0x1B: {c: 8, op: func(c *LR35902) {

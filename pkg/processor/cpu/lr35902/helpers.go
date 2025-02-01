@@ -35,21 +35,18 @@ func (c *LR35902) add8(r *uint8, val uint8) {
 	carry := Reset
 	hc := Reset
 
-	sum, car := bits.Add(uint(*r), uint(val), 0)
-	if car > 0 {
+	sum := uint16(*r) + uint16(val)
+	if sum > 0xFF {
 		carry = Set
 	}
-
-	if (*r&0xf)+(val&0xf) > 0xf {
+	if ((*r)&0xF)+(val&0xF) > 0xF {
 		hc = Set
 	}
 
 	*r = uint8(sum)
-
 	if *r == 0 {
 		zero = Set
 	}
-
 	c.setFlags(zero, Reset, hc, carry)
 }
 func (c *LR35902) add16(lowDest, highDest *uint8, lowVal, highVal uint8) {
@@ -169,18 +166,18 @@ func (c *LR35902) addc8(r *uint8, val uint8) {
 	carry := Reset
 	hc := Reset
 
-	var carryIn uint = 0
+	var carryIn uint16 = 0
 	if c.flags.Carry {
 		carryIn = 1
 	}
 
-	// Compute half-carry with the real carry input.
+	// Compute half-carry using 8-bit arithmetic.
 	if ((*r)&0xF)+(val&0xF)+uint8(carryIn) > 0xF {
 		hc = Set
 	}
 
-	sum, car := bits.Add(uint(*r), uint(val), carryIn)
-	if car > 0 {
+	sum := uint16(*r) + uint16(val) + carryIn
+	if sum > 0xFF {
 		carry = Set
 	}
 
