@@ -104,39 +104,6 @@ func (c *LR35902) sub8(r *uint8, val uint8) {
 
 	c.setFlags(zero, Set, hc, carry)
 }
-func (c *LR35902) sub16(lowDest, highDest *uint8, lowVal, highVal uint8) {
-	zero := Reset
-	carry := Reset
-	hc := Reset
-
-	sum, car := bits.Sub(uint(*highDest), uint(highVal), 0)
-	if car > 0 {
-		carry = Set
-	}
-
-	if (*highDest&0xf)-(highVal&0xf) < 0 {
-		hc = Set
-	}
-
-	*highDest = uint8(sum)
-
-	sum, car = bits.Sub(uint(*lowDest), uint(lowVal), 0)
-	if car > 0 {
-		carry = Set
-	}
-
-	if (*lowDest&0xf)-(lowVal&0xf) < 0 {
-		hc = Set
-	}
-
-	*lowDest = uint8(sum)
-
-	if *highDest == 0 && *lowDest == 0 {
-		zero = Set
-	}
-
-	c.setFlags(zero, Set, hc, carry)
-}
 func (c *LR35902) and8(r *uint8, val uint8) {
 	*r &= val
 	zero := Reset
@@ -395,6 +362,59 @@ func (c *LR35902) call(addr uint16, condition bool) {
 	c.bus.Write(c.registers.sp+1, uint8(retAddr))
 	// Adjust target address: subtract 1 to account for PC auto-increment
 	c.registers.pc = addr - 1
+}
+
+// Other
+func (c *LR35902) decimalAdjust() {
+	// Copied from https://stackoverflow.com/a/57837042/9731890
+	var t uint8
+
+	if c.flags.HalfCarry || (c.registers.a&0x0F) > 9 {
+		t++
+	}
+
+	if c.flags.Carry || c.registers.a > 0x99 {
+		t += 2
+		c.flags.Carry = true
+	}
+
+	// Builds final H flag
+	if c.flags.Subtract && !c.flags.HalfCarry {
+		c.flags.HalfCarry = false
+	} else {
+		if c.flags.Subtract && c.flags.HalfCarry {
+			c.flags.HalfCarry = ((c.registers.a & 0x0F) < 6)
+		} else {
+			c.flags.HalfCarry = ((c.registers.a & 0x0F) >= 0x0A)
+		}
+	}
+
+	switch t {
+	case 1:
+		if c.flags.Subtract {
+			c.registers.a -= 6
+		} else {
+			c.registers.a += 6
+		}
+	case 2:
+		if c.flags.Subtract {
+			c.registers.a -= 0x60
+		} else {
+			c.registers.a += 0x60
+		}
+	case 3:
+		if c.flags.Subtract {
+			c.registers.a -= 0x66
+		} else {
+			c.registers.a += 0x66
+		}
+	}
+
+	if c.registers.a == 0 {
+		c.flags.Zero = true
+	} else {
+		c.flags.Zero = false
+	}
 }
 
 // Interrupts

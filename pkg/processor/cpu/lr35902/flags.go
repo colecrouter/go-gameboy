@@ -1,6 +1,11 @@
 package lr35902
 
-type Flags struct{ Zero, Subtract, HalfCarry, Carry bool }
+type Flags struct {
+	Zero,
+	Subtract,
+	HalfCarry,
+	Carry bool
+}
 
 type FlagState int
 
@@ -34,4 +39,28 @@ func (c *LR35902) setFlags(zero, subtract, halfCarry, carry FlagState) {
 	} else if carry == Reset {
 		c.flags.Carry = false
 	}
+}
+
+func (f Flags) Read() uint8 {
+	val := uint8(0)
+	if f.Zero {
+		val |= 1 << 7
+	}
+	if f.Subtract {
+		val |= 1 << 6
+	}
+	if f.HalfCarry {
+		val |= 1 << 5
+	}
+	if f.Carry {
+		val |= 1 << 4
+	}
+	return val
+}
+
+func (f *Flags) Write(val uint8) {
+	f.Zero = val&(1<<7) != 0
+	f.Subtract = val&(1<<6) != 0
+	f.HalfCarry = val&(1<<5) != 0
+	f.Carry = val&(1<<4) != 0
 }

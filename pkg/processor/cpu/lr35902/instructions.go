@@ -172,7 +172,9 @@ var instructions = map[uint8]instruction{
 		c.load8(&c.registers.h, c.getImmediate8())
 	}},
 	// DAA
-	// 0x27: /* DAA - no helper, leave commented */
+	0x27: {c: 4, op: func(c *LR35902) {
+		c.decimalAdjust()
+	}},
 	// JR Z,r8
 	0x28: {c: 12, op: func(c *LR35902) {
 		c.jumpRelative(int8(c.getImmediate8()), c.flags.Zero)
@@ -247,7 +249,9 @@ var instructions = map[uint8]instruction{
 		c.bus.Write(addr, val)
 	}},
 	// SCF
-	// 0x37: /* SCF - no helper, leave commented */
+	0x37: {c: 4, op: func(c *LR35902) {
+		c.setFlags(Leave, Reset, Reset, Set)
+	}},
 	// JR C,r8
 	0x38: {c: 12, op: func(c *LR35902) {
 		c.jumpRelative(int8(c.getImmediate8()), c.flags.Carry)
@@ -999,7 +1003,11 @@ var instructions = map[uint8]instruction{
 		c.registers.a = c.bus.Read(addr)
 	}},
 	// POP AF
-	// 0xF1: /* POP AF - no helper, leave commented */
+	0xF1: {c: 12, op: func(c *LR35902) {
+		reg := c.flags.Read()
+		c.pop16(&c.registers.a, &reg)
+		c.flags.Write(reg)
+	}},
 	// LD A,(C)
 	0xF2: {c: 8, op: func(c *LR35902) {
 		addr := 0xFF00 + uint16(c.registers.c)
@@ -1010,9 +1018,11 @@ var instructions = map[uint8]instruction{
 		c.disableInterrupts()
 	}},
 	// INVALID
-	// 0xF4: /* INVALID - no helper, leave commented */
 	// PUSH AF
-	// 0xF5: /* PUSH AF - no helper, leave commented */
+	0xF5: {c: 16, op: func(c *LR35902) {
+		reg := c.flags.Read()
+		c.push16(c.registers.a, reg)
+	}},
 	// OR d8
 	0xF6: {c: 8, op: func(c *LR35902) {
 		c.or8(&c.registers.a, c.getImmediate8())
@@ -1039,9 +1049,7 @@ var instructions = map[uint8]instruction{
 		c.enableInterrupts()
 	}},
 	// INVALID
-	// 0xFC: /* INVALID - no helper, leave commented */
 	// INVALID
-	// 0xFD: /* INVALID - no helper, leave commented */
 	// CP d8
 	0xFE: {c: 8, op: func(c *LR35902) {
 		c.cp8(c.registers.a, c.getImmediate8())
