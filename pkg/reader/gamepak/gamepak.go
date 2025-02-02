@@ -1,9 +1,6 @@
 package gamepak
 
-import (
-	"log"
-	"os"
-)
+import bootroms "github.com/colecrouter/gameboy-go/pkg/memory/roms"
 
 type GamePak struct {
 	initialized bool
@@ -26,14 +23,8 @@ func (g *GamePak) Write(addr uint16, data uint8) {
 }
 
 func NewGamePak(b []byte) *GamePak {
-	// Load bootrom
-	boot, err := os.ReadFile("dmg_boot.bin")
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-
 	// Copy bootrom to first 0x100 bytes of buffer
-	copy(b[:0x100], boot)
+	copy(b[:0x100], bootroms.DMG_BOOT[:])
 
 	gp := &GamePak{buffer: b, initialized: true}
 	return gp

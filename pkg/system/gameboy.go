@@ -36,7 +36,7 @@ func NewGameBoy() *GameBoy {
 	gb.memoryBus = &memory.Bus{}
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
-	gb.io = &registers.Registers{}
+	gb.io = registers.NewRegisters()
 
 	gb.cpu = lr35902.NewLR35902(gb.memoryBus, gb.io)
 
@@ -55,7 +55,7 @@ func NewGameBoy() *GameBoy {
 	gb.memoryBus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
 	gb.display = monochrome.NewTerminalDisplay()
-	gb.ppu = ppu.NewPPU(vramModule, oamModule, gb.display)
+	gb.ppu = ppu.NewPPU(vramModule, oamModule, gb.display, gb.io)
 
 	return gb
 }

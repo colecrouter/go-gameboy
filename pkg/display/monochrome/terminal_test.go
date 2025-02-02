@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/colecrouter/gameboy-go/pkg/memory"
+	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
 	"github.com/colecrouter/gameboy-go/pkg/processor/ppu"
 )
@@ -32,7 +33,8 @@ func TestTileColor(t *testing.T) {
 
 	// Create new PPU instance
 	oam := &memory.OAM{}
-	ppuInstance := ppu.NewPPU(vram, oam, terminal)
+	reg := &registers.Registers{}
+	ppuInstance := ppu.NewPPU(vram, oam, terminal, reg)
 
 	for i := 0; i < ppu.TotalCyclesPerLine*ppu.TotalLinesPerFrame; i++ {
 		ppuInstance.Clock()

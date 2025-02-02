@@ -2,8 +2,6 @@ package lr35902
 
 import (
 	"math/bits"
-
-	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 )
 
 // Memory access
@@ -419,22 +417,18 @@ func (c *LR35902) decimalAdjust() {
 
 // Interrupts
 func (c *LR35902) disableInterrupts() {
-	c.io.WriteInterrupts(registers.InterruptFlags{
-		VBlank: false,
-		LCD:    false,
-		Timer:  false,
-		Serial: false,
-		Joypad: false,
-	})
+	c.io.Interrupts.Joypad = false
+	c.io.Interrupts.Serial = false
+	c.io.Interrupts.Timer = false
+	c.io.Interrupts.LCD = false
+	c.io.Interrupts.VBlank = false
 }
 func (c *LR35902) enableInterrupts() {
-	c.io.WriteInterrupts(registers.InterruptFlags{
-		VBlank: true,
-		LCD:    true,
-		Timer:  true,
-		Serial: true,
-		Joypad: true,
-	})
+	c.io.Interrupts.Joypad = true
+	c.io.Interrupts.Serial = true
+	c.io.Interrupts.Timer = true
+	c.io.Interrupts.LCD = true
+	c.io.Interrupts.VBlank = true
 }
 
 // registerPair returns a 16-bit register pair from two 8-bit registers

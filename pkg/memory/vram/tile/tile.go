@@ -1,5 +1,7 @@
 package tile
 
+const TILE_SIZE = 8
+
 type Tile struct {
 	Bytes [16]uint8
 }

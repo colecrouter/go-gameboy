@@ -40,6 +40,8 @@ func (c *LR35902) Clock() {
 	default:
 		instruction, ok := instructions[opcode]
 		if ok {
+			mnemonic := mnemonics[opcode]
+			_ = mnemonic
 			instruction.op(c)
 		} else {
 			panic(fmt.Sprintf("Unknown opcode: 0x%X", opcode))
@@ -74,6 +76,18 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 	cpu.doClock = make(chan struct{}, 1)
 	cpu.bus = bus
 	cpu.io = ioRegisters
+
+	// Initialize registers to default values
+	cpu.registers.b = 0x00
+	cpu.registers.c = 0x13
+	cpu.registers.d = 0x84
+	cpu.registers.e = 0xD2
+	cpu.registers.h = 0x01
+	cpu.registers.l = 0x4D
+	cpu.registers.a = 0x11
+
+	// Initialize flags to default values
+	cpu.flags.Write(0xB0)
 
 	return cpu
 }
