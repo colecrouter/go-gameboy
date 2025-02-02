@@ -29,6 +29,8 @@ type GameBoy struct {
 	ppuTicker     *time.Ticker
 	displayTicker *time.Ticker
 	done          chan struct{}
+	totalCycles   int64 // added to track CPU cycles
+	// fastMode      bool  // new flag for fast execution (bypasses tickers)
 }
 
 func NewGameBoy() *GameBoy {
@@ -37,8 +39,12 @@ func NewGameBoy() *GameBoy {
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	gb.io = registers.NewRegisters()
-
 	gb.cpu = lr35902.NewLR35902(gb.memoryBus, gb.io)
+
+	gb.cpuTicker = time.NewTicker(CLOCK_DELAY)
+	gb.ppuTicker = time.NewTicker(CLOCK_DELAY)
+	gb.displayTicker = time.NewTicker(DISPLAY_DELAY)
+	gb.done = make(chan struct{}) // initialize done channel
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
 	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx aka mapper
@@ -61,51 +67,53 @@ func NewGameBoy() *GameBoy {
 }
 
 func (gb *GameBoy) Start() {
-	gb.cpuTicker = time.NewTicker(CLOCK_DELAY)
-	go func() {
-		for {
-			select {
-			case <-gb.done:
-				return
-			case <-gb.cpuTicker.C:
-				gb.cpu.Clock()
-			}
-		}
-	}()
-
-	gb.ppuTicker = time.NewTicker(CLOCK_DELAY)
-	go func() {
-		for {
-			select {
-			case <-gb.done:
-				return
-			case <-gb.ppuTicker.C:
-				gb.ppu.Clock()
-			}
-		}
-	}()
-
-	gb.displayTicker = time.NewTicker(DISPLAY_DELAY)
+	// if gb.fastMode {
+	// 	// Fast mode: run the CPU loop as fast as possible
+	// 	for {
+	// 		select {
+	// 		case <-gb.done:
+	// 			return
+	// 		default:
+	// 			cycles := gb.cpu.Step()
+	// 			gb.totalCycles += int64(cycles)
+	// 		}
+	// 	}
+	// } else {
+	// New per-frame loop: run until CLOCK_SPEED/60 cycles, then update display and sleep until next frame.
+	frameDuration := DISPLAY_DELAY   // ~1/60 second
+	targetCycles := CLOCK_SPEED / 60 // cycles per frame
 	for {
 		select {
 		case <-gb.done:
 			return
-		case <-gb.displayTicker.C:
+		default:
+			frameStart := time.Now()
+			frameCycles := 0
+			// Execute CPU instructions until reaching target cycles for this frame.
+			for frameCycles < targetCycles {
+				cycles := gb.cpu.Step()
+				frameCycles += cycles
+				gb.totalCycles += int64(cycles)
+			}
+			// Update PPU and display once per frame.
+			gb.ppu.Clock()
 			gb.display.Clock()
+			// Sleep for the remainder of the frame, if any.
+			elapsed := time.Since(frameStart)
+			if remainder := frameDuration - elapsed; remainder > 0 {
+				time.Sleep(remainder)
+			}
 		}
 	}
+	// }
 }
 
 func (gb *GameBoy) Stop() {
-	gb.cpuTicker.Stop()
-	gb.displayTicker.Stop()
-
 	gb.done <- struct{}{}
-}
 
-func (gb *GameBoy) Reset() {
-	gb.Stop()
-	gb.cpu = lr35902.NewLR35902(gb.memoryBus, gb.io)
+	gb.cpuTicker.Stop()
+	gb.ppuTicker.Stop()
+	gb.displayTicker.Stop()
 }
 
 func (gb *GameBoy) InsertCartridge(rom *gamepak.GamePak) {

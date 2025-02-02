@@ -14,15 +14,14 @@ type LR35902 struct {
 		a, b, c, d, e, h, l uint8
 		sp, pc              uint16
 	}
-	flags         Flags
-	bus           memory.Device
-	io            *registers.Registers
-	done, doClock chan struct{}
-	clocking      chan uint8
+	flags Flags
+	bus   memory.Device
+	io    *registers.Registers
 }
 
-// Clock emulates a clock cycle on the CPU
-func (c *LR35902) Clock() {
+// Step executes the next instruction in the CPU's memory.
+// Returns the number of clock cycles the instruction took.
+func (c *LR35902) Step() int {
 	if !c.initialized {
 		panic("CPU not initialized")
 	}
@@ -31,22 +30,17 @@ func (c *LR35902) Clock() {
 	opcode := c.bus.Read(c.registers.pc)
 
 	// Run instruction
-	switch opcode {
-	// ...existing cases...
-	case 0x88: // ADC A,B
-		// Changed: call addc8 to include carry input and let the global PC increment handle advancing.
-		c.addc8(&c.registers.a, c.registers.b)
-	// ...existing cases...
-	default:
-		instruction, ok := instructions[opcode]
-		if ok {
-			mnemonic := mnemonics[opcode]
-			_ = mnemonic
-			instruction.op(c)
-		} else {
-			panic(fmt.Sprintf("Unknown opcode: 0x%X", opcode))
-		}
+	instruction, ok := instructions[opcode]
+	if !ok {
+		panic(fmt.Sprintf("Unknown opcode: 0x%X", opcode))
 	}
+
+	op := instruction.op
+	cycles := instruction.c
+	mnemonic := mnemonics[opcode]
+	_ = mnemonic
+
+	op(c)
 
 	// Skip if instruction is still running
 	// select {
@@ -59,6 +53,7 @@ func (c *LR35902) Clock() {
 	// Increment PC
 	c.registers.pc++
 
+	return cycles
 }
 
 func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
@@ -71,9 +66,6 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 	// cpu.registers.pc = 0x0100
 
 	// cpu.registers.PC = 0x0100
-	cpu.done = make(chan struct{})
-	cpu.clocking = make(chan uint8)
-	cpu.doClock = make(chan struct{}, 1)
 	cpu.bus = bus
 	cpu.io = ioRegisters
 

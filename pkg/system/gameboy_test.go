@@ -3,6 +3,7 @@ package system
 import (
 	"log"
 	"os"
+	"runtime/pprof"
 	"testing"
 	"time"
 
@@ -10,6 +11,20 @@ import (
 )
 
 func BenchmarkGameBoy_OneSecondClockCycles(b *testing.B) {
+	// Start CPU profiling
+	profFile, err := os.Create("cpu.prof")
+	if err != nil {
+		b.Fatal(err)
+	}
+	err = pprof.StartCPUProfile(profFile)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() {
+		pprof.StopCPUProfile()
+		profFile.Close()
+	}()
+
 	f, err := os.ReadFile("../../tetris.gb")
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -19,21 +34,18 @@ func BenchmarkGameBoy_OneSecondClockCycles(b *testing.B) {
 	game.Title()
 
 	gb := NewGameBoy()
+	// // Enable fast mode to bypass real-time delays during benchmarking
+	// gb.fastMode = true
 	gb.InsertCartridge(game)
 
-	// Record start time before running all benchmark iterations.
-	start := time.Now()
-	for i := 0; i < b.N; i++ {
-		for cycle := 0; cycle < CLOCK_SPEED; cycle++ {
-			gb.cpu.Clock()
-		}
-		// Removed per-iteration logging.
-	}
-	// Compute elapsed real time (for debugging if needed)
-	elapsed := time.Since(start)
-	// Each iteration simulates 1.0 second.
-	simulatedTotalTime := float64(b.N)
-	b.Logf("Simulated total GameBoy time: %.2f seconds, benchmark elapsed time: %v", simulatedTotalTime, elapsed)
-	// Report custom metric if desired:
-	b.ReportMetric(simulatedTotalTime, "simTime/s")
+	// run GameBoy in a goroutine so that we can stop it after 1 second
+	go gb.Start()
+
+	// let emulator run for approximately 1 second
+	time.Sleep(1 * time.Second)
+	gb.Stop()
+
+	expectedCycles := CLOCK_SPEED
+	b.Logf("Total CPU cycles processed: %d, expected: ~%d", gb.totalCycles, expectedCycles)
+	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
 }

@@ -2,7 +2,7 @@ package lr35902
 
 type instruction struct {
 	op func(c *LR35902)
-	c  uint8
+	c  int
 }
 
 var instructions = map[uint8]instruction{
