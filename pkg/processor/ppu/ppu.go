@@ -111,10 +111,6 @@ func (p *PPU) getScanline() []uint8 {
 		tile := p.vram.ReadMappedTile(0, uint8(scrolledY/8)*horizontalTiles+uint8(scrolledX/8))
 		tileColor := tile.ReadPixel(scrolledY%8, scrolledX%8)
 
-		if tileColor == 0 {
-			continue
-		}
-
 		scanline[pixelX] = p.matchColorPalette(tileColor)
 	}
 
@@ -130,10 +126,6 @@ func (p *PPU) getScanline() []uint8 {
 
 		tile := p.vram.ReadMappedTile(0, uint8(positionedY/8)*horizontalTiles+uint8(positionedX/8))
 		tileColor := tile.ReadPixel(positionedY%8, positionedX%8)
-
-		if tileColor == 0 {
-			continue
-		}
 
 		scanline[pixelX] = p.matchColorPalette(tileColor)
 	}

@@ -42,14 +42,6 @@ func (c *LR35902) Step() int {
 
 	op(c)
 
-	// Skip if instruction is still running
-	// select {
-	// case <-c.done:
-	// case <-c.doClock:
-	// 	c.clocking <- op
-	// 	return
-	// }
-
 	// Increment PC
 	c.registers.pc++
 
@@ -63,9 +55,6 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 
 	cpu := &LR35902{initialized: true}
 
-	// cpu.registers.pc = 0x0100
-
-	// cpu.registers.PC = 0x0100
 	cpu.bus = bus
 	cpu.io = ioRegisters
 

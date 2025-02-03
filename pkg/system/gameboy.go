@@ -94,9 +94,12 @@ func (gb *GameBoy) Start() {
 				cycles := gb.cpu.Step()
 				frameCycles += cycles
 				gb.totalCycles += int64(cycles)
+				for i := 0; i < cycles; i++ {
+					gb.ppu.Clock()
+				}
 			}
-			// Update PPU and display once per frame.
-			gb.ppu.Clock()
+
+			// Update the display
 			gb.display.Clock()
 			// Sleep for the remainder of the frame, if any.
 			elapsed := time.Since(frameStart)
