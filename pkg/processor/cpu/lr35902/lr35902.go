@@ -17,6 +17,7 @@ type LR35902 struct {
 	flags Flags
 	bus   memory.Device
 	io    *registers.Registers
+	cb    bool
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -30,16 +31,32 @@ func (c *LR35902) Step() int {
 	opcode := c.bus.Read(c.registers.pc)
 
 	// Run instruction
-	instruction, ok := instructions[opcode]
+	var instruction instruction
+	var ok bool
+	if c.cb {
+		instruction, ok = cbInstructions[opcode]
+		c.cb = false
+	} else {
+		instruction, ok = instructions[opcode]
+	}
 	if !ok {
 		panic(fmt.Sprintf("Unknown opcode: 0x%X", opcode))
 	}
 
-	op := instruction.op
-	cycles := instruction.c
-	mnemonic := mnemonics[opcode]
+	var mnemonic string
+	if c.bus.Read(c.registers.pc-1) == 0xCB {
+		mnemonic = getCBMnemonic(opcode)
+	} else {
+		mnemonic = mnemonics[opcode]
+	}
+
 	_ = mnemonic
 
+	op := instruction.op
+	cycles := instruction.c
+
+	a := c.io.LCDStatus.LY
+	_ = a
 	op(c)
 
 	// Increment PC
@@ -61,11 +78,11 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 	// Initialize registers to default values
 	cpu.registers.b = 0x00
 	cpu.registers.c = 0x13
-	cpu.registers.d = 0x84
-	cpu.registers.e = 0xD2
+	cpu.registers.d = 0x00
+	cpu.registers.e = 0xD8
 	cpu.registers.h = 0x01
 	cpu.registers.l = 0x4D
-	cpu.registers.a = 0x11
+	cpu.registers.a = 0x01
 
 	// Initialize flags to default values
 	cpu.flags.Write(0xB0)

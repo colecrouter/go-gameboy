@@ -8,16 +8,16 @@ import (
 func (c *LR35902) load8(r *uint8, val uint8) {
 	*r = val
 }
-func (c *LR35902) load16(low, high *uint8, val uint16) {
+func (c *LR35902) load16(high, low *uint8, val uint16) {
 	*high = uint8(val >> 8)
 	*low = uint8(val)
 }
-func (c *LR35902) pop16(low, high *uint8) {
+func (c *LR35902) pop16(high, low *uint8) {
 	*low = c.bus.Read(c.registers.sp)
 	*high = c.bus.Read(c.registers.sp + 1)
 	c.registers.sp += 2
 }
-func (c *LR35902) push16(low, high uint8) {
+func (c *LR35902) push16(high, low uint8) {
 	c.registers.sp -= 2
 	c.bus.Write(c.registers.sp, low)
 	c.bus.Write(c.registers.sp+1, high)
@@ -197,11 +197,10 @@ func (c *LR35902) inc8(r *uint8) {
 
 	c.setFlags(zero, Reset, hc, Leave)
 }
-func (c *LR35902) inc16(low, high *uint8) {
-	combined := toRegisterPair(*low, *high)
+func (c *LR35902) inc16(high, low *uint8) {
+	combined := toRegisterPair(*high, *low)
 	combined++
-	*high = uint8(combined >> 8)
-	*low = uint8(combined)
+	*high, *low = fromRegisterPair(combined)
 }
 func (c *LR35902) dec8(r *uint8) {
 	*r--
@@ -218,11 +217,10 @@ func (c *LR35902) dec8(r *uint8) {
 
 	c.setFlags(zero, Set, hc, Leave)
 }
-func (c *LR35902) dec16(low, high *uint8) {
-	*low--
-	if *low == 0xff {
-		*high--
-	}
+func (c *LR35902) dec16(high, low *uint8) {
+	combined := toRegisterPair(*high, *low)
+	combined--
+	*high, *low = fromRegisterPair(combined)
 }
 func (c *LR35902) rst(addr uint16) {
 	retAddr := c.registers.pc + 1 // +1 because the PC is incremented after the instruction is fetched
@@ -280,11 +278,16 @@ func (c *LR35902) jumpRelative(offset int8, condition bool) {
 
 // Helpers
 func (c *LR35902) getImmediate8() uint8 {
-	return uint8(c.bus.Read(c.registers.pc + 1))
+	val := c.bus.Read(c.registers.pc + 1)
+	c.registers.pc++
+	return val
 }
 
 func (c *LR35902) getImmediate16() uint16 {
-	return uint16(c.bus.Read(c.registers.pc+1)) | uint16(c.bus.Read(c.registers.pc+2))<<8
+	low := c.bus.Read(c.registers.pc + 1)
+	high := c.bus.Read(c.registers.pc + 2)
+	c.registers.pc += 2
+	return toRegisterPair(high, low)
 }
 
 // Comparing
@@ -433,12 +436,12 @@ func (c *LR35902) enableInterrupts() {
 
 // registerPair returns a 16-bit register pair from two 8-bit registers
 // If you want BC, pass B and C in that order
-func toRegisterPair(low, high uint8) uint16 {
+func toRegisterPair(high, low uint8) uint16 {
 	return uint16(high)<<8 | uint16(low)
 }
 
 // fromRegisterPair returns two 8-bit registers from a 16-bit register pair
 // It returns it in low, high order. E.g. if you have BC (CB in little endian) it will return B, C
-func fromRegisterPair(val uint16) (low uint8, high uint8) {
-	return uint8(val), uint8(val >> 8)
+func fromRegisterPair(val uint16) (high uint8, low uint8) {
+	return uint8(val >> 8), uint8(val)
 }

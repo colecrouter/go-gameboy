@@ -11,6 +11,10 @@ type LCDControl struct {
 }
 
 func (l *LCDControl) Read(addr uint16) uint8 {
+	if addr != 0 {
+		panic("Invalid address")
+	}
+
 	var val uint8
 	if l.BackgroundEnabled {
 		val |= 1 << 0
@@ -37,6 +41,10 @@ func (l *LCDControl) Read(addr uint16) uint8 {
 }
 
 func (l *LCDControl) Write(addr uint16, value uint8) {
+	if addr != 0 {
+		panic("Invalid address")
+	}
+
 	l.BackgroundEnabled = value&(1<<0) > 0
 	l.SpritesEnabled = value&(1<<1) > 0
 	l.Sprite8x16 = value&(1<<2) > 0

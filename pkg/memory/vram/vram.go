@@ -1,6 +1,8 @@
 package vram
 
-import "github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
+import (
+	"github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
+)
 
 type VRAM struct {
 	tileData [0x1800]uint8 // 6KB
@@ -28,8 +30,8 @@ func (v *VRAM) Write(addr uint16, data uint8) {
 	}
 }
 
-// readTile reads a tile from VRAM. The memory bank contains 384 tiles ()
-func (v *VRAM) readTile(index uint8) tile.Tile {
+// ReadTile reads a tile from VRAM. The memory bank contains 384 tiles ()
+func (v *VRAM) ReadTile(index uint8) tile.Tile {
 	tile := tile.Tile{}
 	for i := 0; i < 16; i++ {
 		tile.Bytes[i] = v.Read(uint16(index)*16 + uint16(i))
@@ -64,5 +66,5 @@ func (v *VRAM) ReadMappedTile(tilemap uint8, index uint8) tile.Tile {
 		panic("Invalid tile map index")
 	}
 
-	return v.readTile(currentMap[index])
+	return v.ReadTile(currentMap[index])
 }

@@ -19,7 +19,7 @@ func (b *Bus) AddDevice(start uint16, end uint16, device Device) {
 func (b *Bus) Read(addr uint16) byte {
 	for _, mapping := range b.mapping {
 		if addr >= mapping.Start && addr <= mapping.End {
-			// println("Reading from device", mapping.Device, "at address", addr)
+			// fmt.Printf("Reading from device %v at address 0x%X\n", mapping.Device, addr)
 			// Get adjusted address
 			addr -= mapping.Start
 

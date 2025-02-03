@@ -19,22 +19,17 @@ type LCDStatus struct {
 		Mode0Interrupt bool
 		LYCMatch       bool
 		PPUMode        PPUState
-	} // 0xFF41
-	ScrollY     uint8 // 0xFF42
-	ScrollX     uint8 // 0xFF43
-	YCoordinate uint8 // 0xFF44
-	LYCompare   uint8 // 0xFF45
-	// DMA 0xFF46
-	// TODO http://www.codeslinger.co.uk/pages/projects/gameboy/dma.html
-	PaletteData Palette // 0xFF47
-	PositionY   uint8   // 0xFF4A
-	PositionX   uint8   // 0xFF4B
+	} // 0x41
+	ScrollY   uint8 // 0x42
+	ScrollX   uint8 // 0x43
+	LY        uint8 // 0x44
+	LYCompare uint8 // 0x45
 }
 
 // Read returns the value of the LCD status register
 func (l *LCDStatus) Read(addr uint16) uint8 {
 	switch addr {
-	case 0xFF41:
+	case 0x00:
 		val := uint8(0)
 		if l.Status.LYCInterrupt {
 			val |= 1 << 6
@@ -53,44 +48,38 @@ func (l *LCDStatus) Read(addr uint16) uint8 {
 		}
 		val |= uint8(l.Status.PPUMode)
 		return val
-	case 0xFF42:
+	case 0x01:
 		return l.ScrollY
-	case 0xFF43:
+	case 0x02:
 		return l.ScrollX
-	case 0xFF44:
-		return l.YCoordinate
-	case 0xFF45:
+	case 0x03:
+		return l.LY
+	case 0x04:
 		return l.LYCompare
-	case 0xFF4A:
-		return l.PositionY
-	case 0xFF4B:
-		return l.PositionX
 	}
 
-	return 0
+	panic("Invalid address")
 }
 
 // Write sets the value of the LCD status register
 func (l *LCDStatus) Write(addr uint16, value uint8) {
 	switch addr {
-	case 0xFF41:
+	case 0x00:
 		l.Status.LYCInterrupt = value&(1<<6) > 0
 		l.Status.Mode2Interrupt = value&(1<<5) > 0
 		l.Status.Mode1Interrupt = value&(1<<4) > 0
 		l.Status.Mode0Interrupt = value&(1<<3) > 0
 		l.Status.LYCMatch = value&(1<<2) > 0
 		l.Status.PPUMode = PPUState(value & 0x3)
-	case 0xFF42:
+	case 0x01:
 		l.ScrollY = value
-	case 0xFF43:
+	case 0x02:
 		l.ScrollX = value
-	case 0xFF44:
-		l.YCoordinate = value
-	case 0xFF45:
+	case 0x03:
+		l.LY = value
+	case 0x04:
 		l.LYCompare = value
-	case 0xFF4A:
-		l.PositionY = value
-	case 0xFF4B:
-		l.PositionX = value
+	default:
+		panic("Invalid address")
 	}
 }

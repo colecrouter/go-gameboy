@@ -1,5 +1,7 @@
 package lr35902
 
+import "fmt"
+
 // All of the CB instructions are all the same per first bit
 // The only difference is the register that the instruction operates on
 // E.g. 0x00-0x07 are all RLC instructions, B, C, D, E, H, L, (HL), A
@@ -81,15 +83,30 @@ var secondHalfCbInstructionsHelper = [16]instructionGenerator{
 func generateCbInstructions() map[uint8]instruction {
 	CBInstructions := map[uint8]instruction{}
 
-	for i := 0; i < 16; i++ {
-		// We're iterating over rows e.g. 0x10, 0x20, 0x30, etc.
-		// Each entry will be the LSB e.g. 0x01, 0x02, 0x03, etc.
-		msb := uint8(i) << 4
+	// Register mapping: indices 0-7 correspond to B, C, D, E, H, L, (HL), A.
+	// nil indicates (HL) which is handled specially.
+	regMapping := func(c *LR35902) []*uint8 {
+		return []*uint8{
+			&c.registers.b,
+			&c.registers.c,
+			&c.registers.d,
+			&c.registers.e,
+			&c.registers.h,
+			&c.registers.l,
+			nil, // (HL)
+			&c.registers.a,
+		}
+	}
 
-		// Generate the first half of the instructions
+	for i := 0; i < 16; i++ {
+		msb := uint8(i) << 4
+		// Generate first half instructions
 		for j, gen := range firstHalfCbInstructionsHelper {
-			if j == 6 {
-				CBInstructions[msb+0x06] = instruction{
+			// Determine target register index (0-7)
+			regIndex := j & 0x07
+			CBOpcode := msb + uint8(j)
+			if regIndex == 6 { // (HL) special handling
+				CBInstructions[CBOpcode] = instruction{
 					c: 16,
 					op: func(c *LR35902) {
 						addr := toRegisterPair(c.registers.h, c.registers.l)
@@ -100,19 +117,26 @@ func generateCbInstructions() map[uint8]instruction {
 				}
 				continue
 			}
-
-			CBInstructions[msb+uint8(j)] = instruction{
+			// Capture for closure
+			genFun := gen
+			// Use the register from mapping
+			CBInstructions[CBOpcode] = instruction{
 				c: 8,
 				op: func(c *LR35902) {
-					gen(&c.registers.b)(c)
+					regs := regMapping(c)
+					target := regs[regIndex]
+					genFun(target)(c)
 				},
 			}
 		}
 
-		// Generate the second half of the instructions
+		// Generate second half instructions
 		for j, gen := range secondHalfCbInstructionsHelper {
-			if j == 6 {
-				CBInstructions[msb+0x16] = instruction{
+			// For second half, lower 3 bits come from (0x08+j)
+			regIndex := (0x08 + j) & 0x07
+			CBOpcode := msb + 0x08 + uint8(j)
+			if regIndex == 6 { // (HL) special handling
+				CBInstructions[CBOpcode] = instruction{
 					c: 16,
 					op: func(c *LR35902) {
 						addr := toRegisterPair(c.registers.h, c.registers.l)
@@ -123,11 +147,14 @@ func generateCbInstructions() map[uint8]instruction {
 				}
 				continue
 			}
-
-			CBInstructions[msb+0x08+uint8(j)] = instruction{
+			// Capture for closure
+			genFun := gen
+			CBInstructions[CBOpcode] = instruction{
 				c: 8,
 				op: func(c *LR35902) {
-					gen(&c.registers.b)(c)
+					regs := regMapping(c)
+					target := regs[regIndex]
+					genFun(target)(c)
 				},
 			}
 		}
@@ -137,3 +164,85 @@ func generateCbInstructions() map[uint8]instruction {
 }
 
 var cbInstructions = generateCbInstructions()
+
+// getCBMnemonic returns a string mnemonic for a given CB opcode.
+func getCBMnemonic(op byte) string {
+	// Get target register based on lower 3 bits
+	reg := []string{"B", "C", "D", "E", "H", "L", "(HL)", "A"}[op&0x07]
+
+	// Determine instruction based on upper bits
+	// First half
+	if op < 0x40 {
+		switch op >> 4 {
+		case 0x0:
+			return fmt.Sprintf("RLC %s", reg)
+		case 0x1:
+			return fmt.Sprintf("RL %s", reg)
+		case 0x2:
+			return fmt.Sprintf("SLA %s", reg)
+		case 0x3:
+			return fmt.Sprintf("SWAP %s", reg)
+		case 0x4:
+			return fmt.Sprintf("BIT 0,%s", reg)
+		case 0x5:
+			return fmt.Sprintf("BIT 2,%s", reg)
+		case 0x6:
+			return fmt.Sprintf("BIT 4,%s", reg)
+		case 0x7:
+			return fmt.Sprintf("BIT 6,%s", reg)
+		case 0x8:
+			return fmt.Sprintf("RES 2,%s", reg)
+		case 0x9:
+			return fmt.Sprintf("RES 2,%s", reg)
+		case 0xA:
+			return fmt.Sprintf("RES 4,%s", reg)
+		case 0xB:
+			return fmt.Sprintf("RES 6,%s", reg)
+		case 0xC:
+			return fmt.Sprintf("SET 0,%s", reg)
+		case 0xD:
+			return fmt.Sprintf("SET 2,%s", reg)
+		case 0xE:
+			return fmt.Sprintf("SET 4,%s", reg)
+		case 0xF:
+			return fmt.Sprintf("SET 6,%s", reg)
+		}
+	} else {
+		// Second half
+		switch op >> 4 {
+		case 0x0:
+			return fmt.Sprintf("RRC %s", reg)
+		case 0x1:
+			return fmt.Sprintf("RR %s", reg)
+		case 0x2:
+			return fmt.Sprintf("SRA %s", reg)
+		case 0x3:
+			return fmt.Sprintf("SRL %s", reg)
+		case 0x4:
+			return fmt.Sprintf("BIT 1,%s", reg)
+		case 0x5:
+			return fmt.Sprintf("BIT 3,%s", reg)
+		case 0x6:
+			return fmt.Sprintf("BIT 5,%s", reg)
+		case 0x7:
+			return fmt.Sprintf("BIT 7,%s", reg)
+		case 0x8:
+			return fmt.Sprintf("RES 1,%s", reg)
+		case 0x9:
+			return fmt.Sprintf("RES 3,%s", reg)
+		case 0xA:
+			return fmt.Sprintf("RES 5,%s", reg)
+		case 0xB:
+			return fmt.Sprintf("RES 7,%s", reg)
+		case 0xC:
+			return fmt.Sprintf("SET 1,%s", reg)
+		case 0xD:
+			return fmt.Sprintf("SET 3,%s", reg)
+		case 0xE:
+			return fmt.Sprintf("SET 5,%s", reg)
+		case 0xF:
+			return fmt.Sprintf("SET 7,%s", reg)
+		}
+	}
+	return "Unknown CB"
+}

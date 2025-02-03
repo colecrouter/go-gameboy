@@ -1,6 +1,8 @@
 package ppu
 
 import (
+	"fmt"
+
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
@@ -14,7 +16,6 @@ type PPU struct {
 	oam              *memory.OAM
 	display          display.Display
 	registers        *registers.Registers
-	lineCounter      uint8
 	lineCycleCounter uint16
 }
 
@@ -67,7 +68,7 @@ func (p *PPU) Clock() {
 	case oamScanCycles + pixelTransferCycles:
 		p.registers.LCDStatus.Status.PPUMode = registers.HBlank
 	}
-	if p.lineCounter >= visibleLines {
+	if p.registers.LCDStatus.LY >= visibleLines {
 		p.registers.LCDStatus.Status.PPUMode = registers.VBlank
 	}
 
@@ -78,7 +79,7 @@ func (p *PPU) Clock() {
 	case registers.Drawing:
 		// p.DrawScanline()
 		line := p.getScanline()
-		p.display.DrawScanline(p.lineCounter, line)
+		p.display.DrawScanline(p.registers.LCDStatus.LY, line)
 	case registers.HBlank:
 		// p.HBlank()
 	case registers.VBlank:
@@ -90,11 +91,11 @@ func (p *PPU) Clock() {
 	// Handle counter incrementation
 	p.lineCycleCounter++
 	if p.lineCycleCounter == TotalCyclesPerLine {
-		p.lineCounter++
+		p.registers.LCDStatus.LY++
 		p.lineCycleCounter = 0
 	}
-	if p.lineCounter == TotalLinesPerFrame {
-		p.lineCounter = 0
+	if p.registers.LCDStatus.LY == TotalLinesPerFrame {
+		p.registers.LCDStatus.LY = 0
 	}
 }
 
@@ -105,10 +106,12 @@ func (p *PPU) getScanline() []uint8 {
 
 	// Draw background
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		scrolledY := (p.registers.LCDStatus.ScrollY + p.lineCounter)
+		scrolledY := (p.registers.LCDStatus.ScrollY + p.registers.LCDStatus.LY)
 		scrolledX := (p.registers.LCDStatus.ScrollX + pixelX)
 
 		tile := p.vram.ReadMappedTile(0, uint8(scrolledY/8)*horizontalTiles+uint8(scrolledX/8))
+		fmt.Printf("Tile %d: %v\n", uint8(scrolledY/8)*horizontalTiles+uint8(scrolledX/8), tile)
+
 		tileColor := tile.ReadPixel(scrolledY%8, scrolledX%8)
 
 		scanline[pixelX] = p.matchColorPalette(tileColor)
@@ -116,8 +119,8 @@ func (p *PPU) getScanline() []uint8 {
 
 	// Draw window
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		positionedY := p.registers.LCDStatus.PositionY + p.lineCounter
-		positionedX := p.registers.LCDStatus.PositionX + pixelX
+		positionedY := p.registers.PositionY + p.registers.LCDStatus.LY
+		positionedX := p.registers.PositionX + pixelX
 
 		// If window pixel is outside display bounds, skip drawing it
 		if positionedX >= visibleColumns {
@@ -135,7 +138,7 @@ func (p *PPU) getScanline() []uint8 {
 	for i := 0; i < 40; i++ { // Max 40 sprites in OAM at once
 		sprite := p.oam.ReadSprite(uint8(i))
 		// Assuming sprite height is 8 pixels
-		if sprite.Y() <= p.lineCounter && sprite.Y()+8 > p.lineCounter {
+		if sprite.Y() <= p.registers.LCDStatus.LY && sprite.Y()+8 > p.registers.LCDStatus.LY {
 			sprites = append(sprites, sprite)
 		}
 	}
@@ -150,7 +153,7 @@ func (p *PPU) getScanline() []uint8 {
 		for _, s := range sprites {
 			if (s.X() <= uint8(x)) && (s.X()+8 > uint8(x)) {
 				// Draw sprite
-				spriteColor := s.ReadPixel(p.lineCounter-s.Y(), uint8(x-s.X()))
+				spriteColor := s.ReadPixel(p.registers.LCDStatus.LY-s.Y(), uint8(x-s.X()))
 
 				// Check for sprite priority
 				// TODO
@@ -170,5 +173,7 @@ func (p *PPU) getScanline() []uint8 {
 }
 
 func (p *PPU) matchColorPalette(color uint8) uint8 {
-	return p.registers.LCDStatus.PaletteData.Colors[color]
+	// fmt.Printf("Color: %v\n", p.registers.PaletteData)
+	// return p.registers.PaletteData.Colors[color]
+	return color
 }

@@ -38,7 +38,7 @@ func NewGameBoy() *GameBoy {
 	gb.memoryBus = &memory.Bus{}
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
-	gb.io = registers.NewRegisters()
+	gb.io = &registers.Registers{}
 	gb.cpu = lr35902.NewLR35902(gb.memoryBus, gb.io)
 
 	gb.cpuTicker = time.NewTicker(CLOCK_DELAY)
@@ -67,19 +67,6 @@ func NewGameBoy() *GameBoy {
 }
 
 func (gb *GameBoy) Start() {
-	// if gb.fastMode {
-	// 	// Fast mode: run the CPU loop as fast as possible
-	// 	for {
-	// 		select {
-	// 		case <-gb.done:
-	// 			return
-	// 		default:
-	// 			cycles := gb.cpu.Step()
-	// 			gb.totalCycles += int64(cycles)
-	// 		}
-	// 	}
-	// } else {
-	// New per-frame loop: run until CLOCK_SPEED/60 cycles, then update display and sleep until next frame.
 	frameDuration := DISPLAY_DELAY   // ~1/60 second
 	targetCycles := CLOCK_SPEED / 60 // cycles per frame
 	for {
@@ -106,6 +93,9 @@ func (gb *GameBoy) Start() {
 			if remainder := frameDuration - elapsed; remainder > 0 {
 				time.Sleep(remainder)
 			}
+
+			// Print VRAM tile range
+			// gb.memoryBus.PrintMemory(0x8000, 0x9FFF)
 		}
 	}
 	// }

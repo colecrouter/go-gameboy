@@ -151,9 +151,9 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD (HL+),A
 	0x22: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l) // updated order
 		c.bus.Write(addr, c.registers.a)
-		c.inc16(&c.registers.h, &c.registers.l)
+		c.inc16(&c.registers.h, &c.registers.l) // updated order
 	}},
 	// INC HL
 	0x23: {c: 8, op: func(c *LR35902) {
@@ -185,7 +185,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD A,(HL+)
 	0x2A: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l) // updated order
 		c.registers.a = c.bus.Read(addr)
 		c.inc16(&c.registers.h, &c.registers.l)
 	}},
@@ -220,9 +220,9 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD (HL-),A
 	0x32: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l) // updated order
 		c.bus.Write(addr, c.registers.a)
-		c.dec16(&c.registers.h, &c.registers.l)
+		c.dec16(&c.registers.h, &c.registers.l) // updated order
 	}},
 	// INC SP
 	0x33: {c: 8, op: func(c *LR35902) {
@@ -262,7 +262,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD A,(HL-)
 	0x3A: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l) // updated order
 		c.registers.a = c.bus.Read(addr)
 		c.dec16(&c.registers.h, &c.registers.l)
 	}},
@@ -869,9 +869,8 @@ var instructions = map[uint8]instruction{
 		c.jump(c.getImmediate16(), c.flags.Zero)
 	}},
 	// PREFIX CB
-	0xCB: {c: 8, op: func(c *LR35902) {
-		op := c.getImmediate8()
-		cbInstructions[op].op(c)
+	0xCB: {c: 4, op: func(c *LR35902) {
+		c.cb = true
 	}},
 	// CALL Z,a16
 	0xCC: {c: 12, op: func(c *LR35902) {
@@ -1037,7 +1036,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD SP,HL
 	0xF9: {c: 8, op: func(c *LR35902) {
-		c.registers.sp = toRegisterPair(c.registers.l, c.registers.h)
+		c.registers.sp = toRegisterPair(c.registers.h, c.registers.l) // updated order
 	}},
 	// LD A,(a16)
 	0xFA: {c: 16, op: func(c *LR35902) {
