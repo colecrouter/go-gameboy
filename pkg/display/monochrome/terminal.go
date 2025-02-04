@@ -1,8 +1,6 @@
 package monochrome
 
-import (
-	"fmt"
-)
+import "fmt"
 
 const WIDTH = 160
 const HEIGHT = 144

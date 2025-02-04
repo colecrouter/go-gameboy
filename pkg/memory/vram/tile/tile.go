@@ -3,19 +3,26 @@ package tile
 const TILE_SIZE = 8
 
 type Tile struct {
-	Bytes [16]uint8
+	initialized bool
+	Bytes       [16]uint8
+	Pixels      [TILE_SIZE][TILE_SIZE]uint8
 }
 
-func (t *Tile) ReadPixel(row, col uint8) uint8 {
-	line := []uint8{t.Bytes[row*2], t.Bytes[row*2+1]}
+func (t *Tile) readPixel(row, col uint8) uint8 {
+	msb := (t.Bytes[row*2] >> (7 - col)) & 1
+	lsb := (t.Bytes[row*2+1] >> (7 - col)) & 1
 
-	msb := (line[0]) >> (7 - col) & 1
-	lsb := (line[1]) >> (7 - col) & 1
-
-	// Combine them to get the color id (0-3)
 	return msb | (lsb << 1)
 }
 
 func FromBytes(bytes [16]uint8) Tile {
-	return Tile{Bytes: bytes}
+	t := Tile{Bytes: bytes, initialized: true}
+
+	for row := uint8(0); row < TILE_SIZE; row++ {
+		for col := uint8(0); col < TILE_SIZE; col++ {
+			t.Pixels[row][col] = t.readPixel(row, col)
+		}
+	}
+
+	return t
 }

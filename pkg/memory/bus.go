@@ -42,27 +42,43 @@ func (b *Bus) Write(addr uint16, data byte) {
 }
 
 // PrintMemory prints the contents of the memory bus within the specified address range.
-func (b *Bus) PrintMemory(start, end uint16) {
+func PrintMemory(d Device, start, end uint16) {
 	if start > end {
 		panic("Start address must be less than or equal to end address")
 	}
 
 	// Add column headers
-	fmt.Printf("\n        ") // Adjusted spacing from 7 to 8 spaces for alignment
+	fmt.Printf("\nREL  FIXED     ") // Header for relative and fixed offsets
 	for i := 0; i < 16; i++ {
 		fmt.Printf("%02X ", i)
 	}
 	fmt.Println()
 
 	for addr := start; addr <= end; addr++ {
-		data := b.Read(addr)
-		if addr%16 == 0 {
-			fmt.Printf("\n0x%04X: ", addr)
+		var data uint8
+		defer func() {
+			if r := recover(); r != nil {
+				data = 0x00
+			}
+		}()
+		data = d.Read(addr)
+
+		// Print new row with relative and fixed offsets
+		if (addr-start)%16 == 0 {
+			rel := addr - start
+			fmt.Printf("\033[90m0d%04d\033[0m 0x%04X: ", rel, addr)
 		}
+
+		// Apply color for 0x00, normal print otherwise.
 		if data == 0x00 {
-			fmt.Printf("\033[90m%02X \033[0m", data) // Gray color for 0x00
+			fmt.Printf("\033[90m%02X \033[0m", data)
 		} else {
 			fmt.Printf("%02X ", data)
+		}
+
+		// Print new line after 16 bytes
+		if (addr-start+1)%16 == 0 {
+			fmt.Println()
 		}
 	}
 

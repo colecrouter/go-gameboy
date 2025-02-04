@@ -10,11 +10,11 @@ var lines = [16]uint8{0x3c, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x5e, 0x7e
 var colors = []uint8{0b0, 0b10, 0b11, 0b11, 0b11, 0b11, 0b10, 0b00}
 
 func TestTileColor(t *testing.T) {
-	tile := tile.Tile{Bytes: lines}
+	tile := tile.FromBytes(lines)
 
 	for i, color := range colors {
-		if tile.ReadPixel(0, uint8(i)) != color {
-			t.Errorf("Expected %d, got %d", color, tile.ReadPixel(0, uint8(i)))
+		if tile.Pixels[0][uint8(i)] != color {
+			t.Errorf("Expected %d, got %d", color, tile.Pixels[0][uint8(i)])
 		}
 	}
 }

@@ -8,6 +8,8 @@ type VRAM struct {
 	tileData [0x1800]uint8 // 0x8000-0x97FF
 	tileMap0 [0x400]uint8  // 0x9800-0x9BFF
 	tileMap1 [0x400]uint8  // 0x9C00-0x9FFF
+
+	tiles [384]tile.Tile
 }
 
 func (v *VRAM) Read(addr uint16) uint8 {
@@ -15,60 +17,50 @@ func (v *VRAM) Read(addr uint16) uint8 {
 		return v.tileData[addr]
 	} else if addr < 0x1C00 {
 		return v.tileMap0[addr-0x1800]
-	} else {
+	} else if addr < 0x2000 {
 		return v.tileMap1[addr-0x1C00]
+	} else {
+		panic("Invalid address")
 	}
 }
 
 func (v *VRAM) Write(addr uint16, data uint8) {
 	if addr < 0x1800 {
 		v.tileData[addr] = data
+
+		// Figure out which tile this is and update it
+		index := addr / 16
+		v.tiles[index] = tile.Tile{}
+		for i := 0; i < 16; i++ {
+			v.tiles[index].Bytes[i] = v.Read(index*16 + uint16(i))
+		}
 	} else if addr < 0x1C00 {
 		v.tileMap0[addr-0x1800] = data
-	} else {
+	} else if addr < 0x2000 {
 		v.tileMap1[addr-0x1C00] = data
+	} else {
+		panic("Invalid address")
 	}
 }
 
 // ReadTile reads a tile from VRAM. The memory bank contains 384 tiles ()
-func (v *VRAM) ReadTile(index uint8) tile.Tile {
-	tile := tile.Tile{}
-	for i := 0; i < 16; i++ {
-		tile.Bytes[i] = v.Read(uint16(index)*16 + uint16(i))
-	}
-
-	return tile
+func (v *VRAM) ReadTile(index uint8) *tile.Tile {
+	return &v.tiles[index]
 }
 
-// func (v *VRAM) ReadTileMap(index uint8) [32][32]tile.Tile {
-// 	currentMap := v.tileMap0
-// 	if index == 1 {
-// 		currentMap = v.tileMap1
-// 	} else if index != 0 {
-// 		panic("Invalid tile map index")
-// 	}
-
-// 	tileMap := [32][32]tile.Tile{}
-// 	for i := 0; i < 32; i++ {
-// 		for j := 0; j < 32; j++ {
-// 			tileMap[i][j] = v.ReadTile(currentMap[i*32+j])
-// 		}
-// 	}
-
-// 	return tileMap
-// }
-
-func (v *VRAM) ReadMappedTile(index uint8, useSecondaryMap, useSigned bool) tile.Tile {
-	currentMap := v.tileMap0
+func (v *VRAM) ReadMappedTileAt(index uint16, useSecondaryMap, useSigned bool) *tile.Tile {
+	currentMap := &v.tileMap0
 	if useSecondaryMap {
-		currentMap = v.tileMap1
+		currentMap = &v.tileMap1
 	}
+
+	// Compute the index from tile coordinates.
+	tileIndex := currentMap[index]
+	// println("tile:", index, "index:", tileIndex)
 
 	if useSigned {
-		// Interpret the byte as a signed int8 then add 128.
-		tileIndex := int(int8(currentMap[index])) + 128
-		return v.ReadTile(uint8(tileIndex))
+		tileIndex = uint8(int16(int8(tileIndex)) + 128)
 	}
 
-	return v.ReadTile(currentMap[index])
+	return v.ReadTile(tileIndex)
 }

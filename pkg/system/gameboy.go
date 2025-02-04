@@ -94,8 +94,8 @@ func (gb *GameBoy) Start() {
 				time.Sleep(remainder)
 			}
 
-			// Print VRAM tile range
-			// gb.memoryBus.PrintMemory(0x8000, 0x9FFF)
+			// Print tilemap 1
+			memory.PrintMemory(gb.memoryBus, 0x9800, 0x9BFF)
 		}
 	}
 	// }

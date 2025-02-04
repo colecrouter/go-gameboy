@@ -1,12 +1,13 @@
 package ppu
 
 import (
+	"fmt" // added for debugging
+
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram/sprite"
-	"github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
 )
 
 type PPU struct {
@@ -98,54 +99,66 @@ func (p *PPU) Clock() {
 }
 
 func (p *PPU) getScanline() []uint8 {
-	horizontalTiles := uint8(visibleColumns / tile.TILE_SIZE)
-
 	var scanline [160]byte
 
-	// Determine addressing mode: if BackgroundTileDataSelect is false, use signed addressing mode.
 	useSigned := !p.registers.LCDControl.UseSecondaryTileData
-	bgSecondMap := p.registers.LCDControl.BackgroundUseSecondaryTileMap
-	windowSecondMap := p.registers.LCDControl.WindowUseSecondTileMap
 
 	// Draw background
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		// These will overflow as expected
-		scrolledY := p.registers.LY + p.registers.PositionY
-		scrolledX := pixelX + p.registers.PositionX
+		useSecondaryMap := p.registers.LCDControl.BackgroundUseSecondaryTileMap
+		scrolledY := p.registers.LY
+		scrolledX := p.registers.ScrollX + pixelX
 
-		tileIndex := uint8(scrolledY/8)*horizontalTiles + uint8(scrolledX/8)
-		tile := p.vram.ReadMappedTile(tileIndex, bgSecondMap, useSigned)
-		tileColor := tile.ReadPixel(scrolledY%8, scrolledX%8)
+		tileX := scrolledX / 8
+		tileY := scrolledY / 8
 
-		scanline[pixelX] = p.matchColorPalette(tileColor)
+		// Multiply by 32 since the DMG tile map is 32 tiles wide, not 20.
+		index := uint16(tileY)*32 + uint16(tileX)
+		tile := p.vram.ReadMappedTileAt(index, useSecondaryMap, useSigned)
+		tileColor := tile.Pixels[scrolledY%8][scrolledX%8]
+		mapped := p.matchColorPalette(tileColor)
+		scanline[pixelX] = mapped
+
+		// Debug only for first pixel on first scanline.
+		if p.registers.LY == 0 && pixelX == 0 {
+			fmt.Printf("Debug: Background tile index %d, raw color %d, mapped %d\n", index, tileColor, mapped)
+		}
 	}
 
 	// Draw window
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		// These should not overflow
-		positionedY := uint8(int16(p.registers.LY - p.registers.PositionY))
-		positionedX := uint8(int16(pixelX - p.registers.PositionX))
+		useSecondaryMap := p.registers.LCDControl.WindowUseSecondTileMap
+		positionedY := p.registers.PositionY + p.registers.LY
+		positionedX := p.registers.PositionX + pixelX
 
-		// If window pixel is outside display bounds, skip drawing it
 		if positionedX >= visibleColumns {
 			continue
 		}
 
-		tileIndex := uint8(positionedY/8)*horizontalTiles + uint8(positionedX/8)
-		tile := p.vram.ReadMappedTile(tileIndex, windowSecondMap, useSigned)
-		tileColor := tile.ReadPixel(positionedY%8, positionedX%8)
+		tileX := positionedX / 8
+		tileY := positionedY / 8
 
-		scanline[pixelX] = p.matchColorPalette(tileColor)
+		// Use a row width of 32 as above.
+		index := uint16(tileY)*32 + uint16(tileX)
+		tile := p.vram.ReadMappedTileAt(index, useSecondaryMap, useSigned)
+		tileColor := tile.Pixels[positionedY%8][positionedX%8]
+		mapped := p.matchColorPalette(tileColor)
+		scanline[pixelX] = mapped
+
+		// Debug for first pixel (optional)
+		if p.registers.LY == 0 && pixelX == 0 {
+			fmt.Printf("Debug: Window tile index %d, raw color %d, mapped %d\n", index, tileColor, mapped)
+		}
 	}
 
 	// Get sprites on the current scanline
 	var sprites []*sprite.Sprite
 	for i := 0; i < 40; i++ { // Max 40 sprites in OAM at once
-		sprite := p.oam.ReadSprite(uint8(i))
-		// Assuming sprite height is 8 pixels
-		if sprite.Y() <= p.registers.LY && sprite.Y()+8 > p.registers.LY {
-			sprites = append(sprites, sprite)
-		}
+		// sprite := p.oam.ReadSprite(uint8(i))
+		// // Assuming sprite height is 8 pixels
+		// if sprite.Y() <= p.registers.LY && sprite.Y()+8 > p.registers.LY {
+		// 	sprites = append(sprites, sprite)
+		// }
 	}
 
 	// Max of 10 sprites per scanline
@@ -172,6 +185,11 @@ func (p *PPU) getScanline() []uint8 {
 				scanline[x] = p.matchColorPalette(spriteColor)
 			}
 		}
+	}
+
+	// Debug print for first scanline (for example)
+	if p.registers.LY == 0 {
+		fmt.Printf("Debug: LY %d first 8 scanline pixels: %v\n", p.registers.LY, scanline[:8])
 	}
 
 	return scanline[:]
