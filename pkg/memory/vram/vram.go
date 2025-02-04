@@ -5,9 +5,9 @@ import (
 )
 
 type VRAM struct {
-	tileData [0x1800]uint8 // 6KB
-	tileMap0 [0x400]uint8  // 1KB
-	tileMap1 [0x400]uint8  // 1KB
+	tileData [0x1800]uint8 // 0x8000-0x97FF
+	tileMap0 [0x400]uint8  // 0x9800-0x9BFF
+	tileMap1 [0x400]uint8  // 0x9C00-0x9FFF
 }
 
 func (v *VRAM) Read(addr uint16) uint8 {
@@ -58,12 +58,16 @@ func (v *VRAM) ReadTile(index uint8) tile.Tile {
 // 	return tileMap
 // }
 
-func (v *VRAM) ReadMappedTile(tilemap uint8, index uint8) tile.Tile {
+func (v *VRAM) ReadMappedTile(index uint8, useSecondaryMap, useSigned bool) tile.Tile {
 	currentMap := v.tileMap0
-	if tilemap == 1 {
+	if useSecondaryMap {
 		currentMap = v.tileMap1
-	} else if tilemap != 0 {
-		panic("Invalid tile map index")
+	}
+
+	if useSigned {
+		// Interpret the byte as a signed int8 then add 128.
+		tileIndex := int(int8(currentMap[index])) + 128
+		return v.ReadTile(uint8(tileIndex))
 	}
 
 	return v.ReadTile(currentMap[index])

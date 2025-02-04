@@ -55,7 +55,7 @@ func (c *LR35902) Step() int {
 	op := instruction.op
 	cycles := instruction.c
 
-	a := c.io.LCDStatus.LY
+	a := c.io.LY
 	_ = a
 	op(c)
 

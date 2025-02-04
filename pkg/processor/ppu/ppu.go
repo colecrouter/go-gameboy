@@ -1,8 +1,6 @@
 package ppu
 
 import (
-	"fmt"
-
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
@@ -62,24 +60,24 @@ func (p *PPU) Clock() {
 	// See above diagram for reference
 	switch p.lineCycleCounter {
 	case 0:
-		p.registers.LCDStatus.Status.PPUMode = registers.OAMScan
+		p.registers.LCDStatus.PPUMode = registers.OAMScan
 	case oamScanCycles:
-		p.registers.LCDStatus.Status.PPUMode = registers.Drawing
+		p.registers.LCDStatus.PPUMode = registers.Drawing
 	case oamScanCycles + pixelTransferCycles:
-		p.registers.LCDStatus.Status.PPUMode = registers.HBlank
+		p.registers.LCDStatus.PPUMode = registers.HBlank
 	}
-	if p.registers.LCDStatus.LY >= visibleLines {
-		p.registers.LCDStatus.Status.PPUMode = registers.VBlank
+	if p.registers.LY >= visibleLines {
+		p.registers.LCDStatus.PPUMode = registers.VBlank
 	}
 
-	// Handle mode-specific operations
-	switch p.registers.LCDStatus.Status.PPUMode {
+	// Handle mode-specific operations & interrupts
+	switch p.registers.LCDStatus.PPUMode {
 	case registers.OAMScan:
 		// p.OAMScan()
+		// Is this necessary? Could be an optimization in the future
 	case registers.Drawing:
-		// p.DrawScanline()
 		line := p.getScanline()
-		p.display.DrawScanline(p.registers.LCDStatus.LY, line)
+		p.display.DrawScanline(p.registers.LY, line)
 	case registers.HBlank:
 		// p.HBlank()
 	case registers.VBlank:
@@ -91,11 +89,11 @@ func (p *PPU) Clock() {
 	// Handle counter incrementation
 	p.lineCycleCounter++
 	if p.lineCycleCounter == TotalCyclesPerLine {
-		p.registers.LCDStatus.LY++
+		p.registers.LY++
 		p.lineCycleCounter = 0
 	}
-	if p.registers.LCDStatus.LY == TotalLinesPerFrame {
-		p.registers.LCDStatus.LY = 0
+	if p.registers.LY == TotalLinesPerFrame {
+		p.registers.LY = 0
 	}
 }
 
@@ -104,14 +102,19 @@ func (p *PPU) getScanline() []uint8 {
 
 	var scanline [160]byte
 
+	// Determine addressing mode: if BackgroundTileDataSelect is false, use signed addressing mode.
+	useSigned := !p.registers.LCDControl.UseSecondaryTileData
+	bgSecondMap := p.registers.LCDControl.BackgroundUseSecondaryTileMap
+	windowSecondMap := p.registers.LCDControl.WindowUseSecondTileMap
+
 	// Draw background
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		scrolledY := (p.registers.LCDStatus.ScrollY + p.registers.LCDStatus.LY)
-		scrolledX := (p.registers.LCDStatus.ScrollX + pixelX)
+		// These will overflow as expected
+		scrolledY := p.registers.LY + p.registers.PositionY
+		scrolledX := pixelX + p.registers.PositionX
 
-		tile := p.vram.ReadMappedTile(0, uint8(scrolledY/8)*horizontalTiles+uint8(scrolledX/8))
-		fmt.Printf("Tile %d: %v\n", uint8(scrolledY/8)*horizontalTiles+uint8(scrolledX/8), tile)
-
+		tileIndex := uint8(scrolledY/8)*horizontalTiles + uint8(scrolledX/8)
+		tile := p.vram.ReadMappedTile(tileIndex, bgSecondMap, useSigned)
 		tileColor := tile.ReadPixel(scrolledY%8, scrolledX%8)
 
 		scanline[pixelX] = p.matchColorPalette(tileColor)
@@ -119,15 +122,17 @@ func (p *PPU) getScanline() []uint8 {
 
 	// Draw window
 	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		positionedY := p.registers.PositionY + p.registers.LCDStatus.LY
-		positionedX := p.registers.PositionX + pixelX
+		// These should not overflow
+		positionedY := uint8(int16(p.registers.LY - p.registers.PositionY))
+		positionedX := uint8(int16(pixelX - p.registers.PositionX))
 
 		// If window pixel is outside display bounds, skip drawing it
 		if positionedX >= visibleColumns {
 			continue
 		}
 
-		tile := p.vram.ReadMappedTile(0, uint8(positionedY/8)*horizontalTiles+uint8(positionedX/8))
+		tileIndex := uint8(positionedY/8)*horizontalTiles + uint8(positionedX/8)
+		tile := p.vram.ReadMappedTile(tileIndex, windowSecondMap, useSigned)
 		tileColor := tile.ReadPixel(positionedY%8, positionedX%8)
 
 		scanline[pixelX] = p.matchColorPalette(tileColor)
@@ -138,7 +143,7 @@ func (p *PPU) getScanline() []uint8 {
 	for i := 0; i < 40; i++ { // Max 40 sprites in OAM at once
 		sprite := p.oam.ReadSprite(uint8(i))
 		// Assuming sprite height is 8 pixels
-		if sprite.Y() <= p.registers.LCDStatus.LY && sprite.Y()+8 > p.registers.LCDStatus.LY {
+		if sprite.Y() <= p.registers.LY && sprite.Y()+8 > p.registers.LY {
 			sprites = append(sprites, sprite)
 		}
 	}
@@ -153,7 +158,7 @@ func (p *PPU) getScanline() []uint8 {
 		for _, s := range sprites {
 			if (s.X() <= uint8(x)) && (s.X()+8 > uint8(x)) {
 				// Draw sprite
-				spriteColor := s.ReadPixel(p.registers.LCDStatus.LY-s.Y(), uint8(x-s.X()))
+				spriteColor := s.ReadPixel(p.registers.LY-s.Y(), uint8(x-s.X()))
 
 				// Check for sprite priority
 				// TODO
@@ -174,6 +179,6 @@ func (p *PPU) getScanline() []uint8 {
 
 func (p *PPU) matchColorPalette(color uint8) uint8 {
 	// fmt.Printf("Color: %v\n", p.registers.PaletteData)
-	// return p.registers.PaletteData.Colors[color]
-	return color
+	return p.registers.PaletteData.Colors[color]
+	// return color
 }

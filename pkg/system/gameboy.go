@@ -87,7 +87,7 @@ func (gb *GameBoy) Start() {
 			}
 
 			// Update the display
-			gb.display.Clock()
+			go gb.display.Clock()
 			// Sleep for the remainder of the frame, if any.
 			elapsed := time.Since(frameStart)
 			if remainder := frameDuration - elapsed; remainder > 0 {

@@ -9,8 +9,12 @@ type Registers struct {
 	WavePattern uint16         // 0x30-0x3F
 	LCDControl  LCDControl     // 0x40
 	LCDStatus   LCDStatus      // 0x41-0x45
-	// DMA 0x46
+	ScrollY     uint8          // 0x42
+	ScrollX     uint8          // 0x43
+	LY          uint8          // 0x44
+	LYCompare   uint8          // 0x45
 	// TODO http://www.codeslinger.co.uk/pages/projects/gameboy/dma.html
+	// DMA 0x46
 	PaletteData Palette // 0x47
 	PositionY   uint8   // 0x4A
 	PositionX   uint8   // 0x4B
@@ -56,8 +60,18 @@ func (r *Registers) Read(addr uint16) uint8 {
 		return uint8(r.WavePattern >> (4 * offset))
 	case 0x40:
 		return r.LCDControl.Read(addr - 0x40)
-	case 0x41, 0x42, 0x43, 0x44, 0x45:
-		return r.LCDStatus.Read(addr - 0x41)
+	case 0x41:
+		return r.LCDStatus.Read(0)
+	case 0x42:
+		return r.ScrollY
+	case 0x43:
+		return r.ScrollX
+	case 0x44:
+		return r.LY
+	case 0x45:
+		return r.LYCompare
+	case 0x46:
+		panic("DMA not implemented")
 	case 0x47:
 		return r.PaletteData.Read(0)
 	case 0x4A:
@@ -95,8 +109,18 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.WavePattern = r.WavePattern | (uint16(value) << (4 * offset))
 	case 0x40:
 		r.LCDControl.Write(0, value)
-	case 0x41, 0x42, 0x43, 0x44, 0x45:
-		r.LCDStatus.Write(addr-0x41, value)
+	case 0x41:
+		r.LCDStatus.Write(0, value)
+	case 0x42:
+		r.ScrollY = value
+	case 0x43:
+		r.ScrollX = value
+	case 0x44:
+		panic("LY is read-only")
+	case 0x45:
+		r.LYCompare = value
+	case 0x46:
+		panic("DMA not implemented")
 	case 0x47:
 		r.PaletteData.Write(0, value)
 	case 0x4A:

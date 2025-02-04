@@ -40,13 +40,13 @@ func (t *TerminalDisplay) Clock() {
 			color := t.buffer[y][x]
 			switch color {
 			case 0:
-				newStringBuffer += "  "
-			case 1:
-				newStringBuffer += "░░"
-			case 2:
-				newStringBuffer += "▒▒"
-			case 3:
 				newStringBuffer += "▓▓"
+			case 1:
+				newStringBuffer += "▒▒"
+			case 2:
+				newStringBuffer += "░░"
+			case 3:
+				newStringBuffer += "  "
 			}
 		}
 		newStringBuffer += "\n"

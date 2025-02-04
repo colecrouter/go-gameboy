@@ -12,50 +12,40 @@ const (
 
 // LCDStatus represents the LCD status register
 type LCDStatus struct {
-	Status struct {
-		LYCInterrupt   bool
-		Mode2Interrupt bool
-		Mode1Interrupt bool
-		Mode0Interrupt bool
-		LYCMatch       bool
-		PPUMode        PPUState
-	} // 0x41
-	ScrollY   uint8 // 0x42
-	ScrollX   uint8 // 0x43
-	LY        uint8 // 0x44
-	LYCompare uint8 // 0x45
-}
+	LYCInterrupt   bool
+	Mode2Interrupt bool
+	Mode1Interrupt bool
+	Mode0Interrupt bool
+	LYCMatch       bool
+	PPUMode        PPUState
+} // 0x41
 
 // Read returns the value of the LCD status register
 func (l *LCDStatus) Read(addr uint16) uint8 {
+	if addr != 0 {
+		panic("Invalid address")
+	}
+
 	switch addr {
 	case 0x00:
 		val := uint8(0)
-		if l.Status.LYCInterrupt {
+		if l.LYCInterrupt {
 			val |= 1 << 6
 		}
-		if l.Status.Mode2Interrupt {
+		if l.Mode2Interrupt {
 			val |= 1 << 5
 		}
-		if l.Status.Mode1Interrupt {
+		if l.Mode1Interrupt {
 			val |= 1 << 4
 		}
-		if l.Status.Mode0Interrupt {
+		if l.Mode0Interrupt {
 			val |= 1 << 3
 		}
-		if l.Status.LYCMatch {
+		if l.LYCMatch {
 			val |= 1 << 2
 		}
-		val |= uint8(l.Status.PPUMode)
+		val |= uint8(l.PPUMode)
 		return val
-	case 0x01:
-		return l.ScrollY
-	case 0x02:
-		return l.ScrollX
-	case 0x03:
-		return l.LY
-	case 0x04:
-		return l.LYCompare
 	}
 
 	panic("Invalid address")
@@ -63,23 +53,14 @@ func (l *LCDStatus) Read(addr uint16) uint8 {
 
 // Write sets the value of the LCD status register
 func (l *LCDStatus) Write(addr uint16, value uint8) {
-	switch addr {
-	case 0x00:
-		l.Status.LYCInterrupt = value&(1<<6) > 0
-		l.Status.Mode2Interrupt = value&(1<<5) > 0
-		l.Status.Mode1Interrupt = value&(1<<4) > 0
-		l.Status.Mode0Interrupt = value&(1<<3) > 0
-		l.Status.LYCMatch = value&(1<<2) > 0
-		l.Status.PPUMode = PPUState(value & 0x3)
-	case 0x01:
-		l.ScrollY = value
-	case 0x02:
-		l.ScrollX = value
-	case 0x03:
-		l.LY = value
-	case 0x04:
-		l.LYCompare = value
-	default:
+	if addr != 0 {
 		panic("Invalid address")
 	}
+
+	l.LYCInterrupt = value&(1<<6) > 0
+	l.Mode2Interrupt = value&(1<<5) > 0
+	l.Mode1Interrupt = value&(1<<4) > 0
+	l.Mode0Interrupt = value&(1<<3) > 0
+	l.LYCMatch = value&(1<<2) > 0
+	l.PPUMode = PPUState(value & 0x3)
 }
