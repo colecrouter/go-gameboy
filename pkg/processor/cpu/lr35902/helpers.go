@@ -355,12 +355,16 @@ func (c *LR35902) call(addr uint16, condition bool) {
 		return
 	}
 
-	// Calculate return address (current PC + 3: opcode plus two immediate bytes)
-	retAddr := c.registers.pc + 3
+	// Calculate return address
+	retAddr := c.registers.pc + 1
+
+	// Decrement SP by 2 to make room for the return address (2 bytes)
 	c.registers.sp -= 2
+
 	// Push high byte then low byte of return address
 	c.bus.Write(c.registers.sp, uint8(retAddr>>8))
 	c.bus.Write(c.registers.sp+1, uint8(retAddr))
+
 	// Adjust target address: subtract 1 to account for PC auto-increment
 	c.registers.pc = addr - 1
 }

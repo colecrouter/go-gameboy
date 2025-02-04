@@ -93,8 +93,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: INC/DEC BC", func(t *testing.T) {
 			{
 				_, cpu := setupWithOpcode(0x03)
-				cpu.registers.b = 0x01
-				cpu.registers.c = 0x00
+				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x01)
 				cpu.Step()
 				assert.Equal(t, uint16(2), toRegisterPair(cpu.registers.b, cpu.registers.c), "BC should increment by 1")
 			}
@@ -109,9 +108,7 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range decBCTests {
 				t.Run(fmt.Sprintf("DEC_BC_%s", tt.name), func(t *testing.T) {
 					_, cpu := setupWithOpcode(0x0B)
-					cpu.registers.b = uint8(tt.initBC)
-					cpu.registers.c = uint8(tt.initBC >> 8)
-					// ...existing debug/log calls...
+					cpu.registers.b, cpu.registers.c = fromRegisterPair(tt.initBC)
 					cpu.Step()
 					res := toRegisterPair(cpu.registers.b, cpu.registers.c)
 					assert.Equal(t, tt.expResult, res, "DEC BC did not produce expected value")
@@ -120,10 +117,8 @@ func TestInstructions(t *testing.T) {
 		})
 		t.Run("Operation: ADD HL,BC", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x09)
-			cpu.registers.h = 0x01
-			cpu.registers.l = 0x00
-			cpu.registers.b = 0x01
-			cpu.registers.c = 0x00
+			cpu.registers.h, cpu.registers.l = fromRegisterPair(0x1)
+			cpu.registers.b, cpu.registers.c = fromRegisterPair(0x1)
 			cpu.Step()
 			assert.Equal(t, uint16(0x2), toRegisterPair(cpu.registers.h, cpu.registers.l), "HL should add BC")
 			assert.False(t, cpu.flags.Subtract, "N flag should be reset in addition")
@@ -132,29 +127,28 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("Memory", func(t *testing.T) {
 		t.Run("Instruction: Address Operations", func(t *testing.T) {
-			{
+			t.Run("LD_A_from_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x02)
-				cpu.registers.b = 0x01
-				cpu.registers.c = 0x00
+				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x01)
 				cpu.registers.a = 0xAA
 				cpu.Step()
 				assert.Equal(t, uint8(0xAA), bus.Read(0x0001), "Memory at address BC should be loaded with A")
-			}
-			{
+			})
+			t.Run("LD_A_from_a16", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x0A)
 				cpu.registers.b = 0x01
 				cpu.registers.c = 0x00
 				bus.Write(0x100, 0xBB)
 				cpu.Step()
 				assert.Equal(t, uint8(0xBB), cpu.registers.a, "A should load value from memory at address BC")
-			}
-			{
+			})
+			t.Run("LD_a16_from_A", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x08, 0x0B, 0x00)
 				cpu.registers.sp = 0x1234
 				cpu.Step()
 				assert.Equal(t, uint8(0x34), bus.Read(0x0B), "Memory low should be SP's low byte")
 				assert.Equal(t, uint8(0x12), bus.Read(0x0C), "Memory high should be SP's high byte")
-			}
+			})
 		})
 		t.Run("Instruction: LD Variants", func(t *testing.T) {
 			t.Run("LD_A_from_a16", func(t *testing.T) {
@@ -266,13 +260,12 @@ func TestInstructions(t *testing.T) {
 		t.Run("Operation: PUSH/POP", func(t *testing.T) {
 			t.Run("PUSH_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xC5)
-				cpu.registers.b = 0x12
-				cpu.registers.c = 0x34
+				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x1234)
 				cpu.registers.sp = 0xFFFE
 				cpu.Step()
 				assert.Equal(t, uint16(0xFFFC), cpu.registers.sp, "SP should decrease by 2 after PUSH")
-				high := bus.Read(cpu.registers.sp)
-				low := bus.Read(cpu.registers.sp + 1)
+				high := bus.Read(cpu.registers.sp + 1)
+				low := bus.Read(cpu.registers.sp)
 				assert.Equal(t, uint8(0x12), high, "PUSH_BC: high byte")
 				assert.Equal(t, uint8(0x34), low, "PUSH_BC: low byte")
 			})
@@ -280,8 +273,8 @@ func TestInstructions(t *testing.T) {
 			t.Run("POP_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xC1)
 				cpu.registers.sp = 0xFFFC
-				bus.Write(cpu.registers.sp, 0x78)
-				bus.Write(cpu.registers.sp+1, 0x9A)
+				bus.Write(cpu.registers.sp, 0x9A)
+				bus.Write(cpu.registers.sp+1, 0x78)
 				cpu.Step()
 				assert.Equal(t, uint16(0xFFFE), cpu.registers.sp, "SP should increase by 2 after POP")
 				assert.Equal(t, uint8(0x78), cpu.registers.b, "POP_BC: register B")
@@ -299,7 +292,7 @@ func TestInstructions(t *testing.T) {
 			retHigh := bus.Read(cpu.registers.sp)
 			retLow := bus.Read(cpu.registers.sp + 1)
 			expectedRet := initPC + 3
-			actualRet := uint16(retHigh)<<8 | uint16(retLow)
+			actualRet := toRegisterPair(retHigh, retLow)
 			assert.Equal(t, expectedRet, actualRet, "CALL should push correct return address")
 		})
 
