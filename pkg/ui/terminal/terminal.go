@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,8 +30,10 @@ func (app *Application) Run() error {
 
 // terminalModel implements tea.Model.
 type terminalModel struct {
-	app   *Application
-	frame string
+	app       *Application
+	frame     string
+	showDebug bool   // new: whether the debug viewport is shown
+	debugInfo string // new: placeholder text for debug info
 }
 
 type tickMsg time.Time
@@ -54,10 +57,19 @@ func (m *terminalModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		// Update frame from GameBoy display.
 		m.frame = renderer.RenderANSI(m.app.gb.Display.Image())
+		// update debugInfo placeholder (can be replaced later)
+		m.debugInfo = "Debug info: [placeholder]"
 		return m, tickCmd()
 	case tea.KeyMsg:
-		// Check both the key string and key type for ctrl+c.
-		if msg.String() == "q" || msg.Type == tea.KeyCtrlC {
+		switch msg.String() {
+		case "q":
+			m.app.gb.Stop()
+			return m, tea.Quit
+		case "d": // toggle debug viewport on key "d"
+			m.showDebug = !m.showDebug
+		}
+		// Also handle ctrl+c.
+		if msg.Type == tea.KeyCtrlC {
 			m.app.gb.Stop()
 			return m, tea.Quit
 		}
@@ -66,5 +78,32 @@ func (m *terminalModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *terminalModel) View() string {
-	return fmt.Sprintf("%s\nPress q or ctrl+c to exit.", m.frame)
+	// If debug viewport is hidden, show only the main display.
+	if !m.showDebug {
+		return m.frame + "\n\nPress 'd' to show debug info.\nPress q or ctrl+c to exit."
+	}
+
+	// If debug viewport is enabled, split main and debug views side-by-side.
+	mainLines := strings.Split(m.frame, "\n")
+	debugStr := m.debugInfo + "\nPress 'd' to hide debug info."
+	debugLines := strings.Split(debugStr, "\n")
+
+	// Determine maximum lines and combine side-by-side.
+	maxLines := len(mainLines)
+	if len(debugLines) > maxLines {
+		maxLines = len(debugLines)
+	}
+
+	var combined []string
+	for i := 0; i < maxLines; i++ {
+		var left, right string
+		if i < len(mainLines) {
+			left = mainLines[i]
+		}
+		if i < len(debugLines) {
+			right = debugLines[i]
+		}
+		combined = append(combined, fmt.Sprintf("%-80s   %s", left, right))
+	}
+	return strings.Join(combined, "\n") + "\nPress q or ctrl+c to exit."
 }
