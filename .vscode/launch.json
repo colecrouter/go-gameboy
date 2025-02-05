@@ -11,6 +11,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/package/main.go",
             "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
     ]
 }

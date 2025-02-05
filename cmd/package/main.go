@@ -6,20 +6,21 @@ import (
 
 	"github.com/colecrouter/gameboy-go/pkg/reader/gamepak"
 	"github.com/colecrouter/gameboy-go/pkg/system"
+	"github.com/colecrouter/gameboy-go/pkg/ui/terminal"
 )
 
 func main() {
 	gb := system.NewGameBoy()
 
-	f, err := os.ReadFile("tetris.gb")
+	romData, err := os.ReadFile("tetris.gb")
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln(err)
 	}
-
-	game := gamepak.NewGamePak(f)
-	game.Title()
-
+	game := gamepak.NewGamePak(romData)
 	gb.InsertCartridge(game)
 
-	gb.Start()
+	app := terminal.NewApplication(gb)
+	if err := app.Run(); err != nil {
+		log.Fatalln(err)
+	}
 }

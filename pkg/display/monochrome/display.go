@@ -9,7 +9,6 @@ import (
 
 type Display struct {
 	initialised bool
-	buffer      [display.HEIGHT][display.WIDTH]uint8 // 0-3 for color (0 = white, 3 = black)
 
 	image *image.Paletted
 }
@@ -27,22 +26,7 @@ func (d *Display) Clock() {
 		panic("Display not initialised")
 	}
 
-	for y := 0; y < display.HEIGHT; y++ {
-		for x := 0; x < display.WIDTH; x++ {
-			var color uint8
-			switch d.buffer[y][x] {
-			case 0:
-				color = 255
-			case 1:
-				color = 170
-			case 2:
-				color = 85
-			case 3:
-				color = 0
-			}
-			d.image.Set(x, y, Palette[color])
-		}
-	}
+	// Do nothing
 }
 
 func (d *Display) Image() image.Image {
@@ -60,7 +44,7 @@ func (d *Display) DrawScanline(row uint8, line []uint8) {
 
 	for x := 0; x < display.WIDTH; x++ {
 		color := line[x]
-		d.buffer[row][x] = color
+		d.image.Set(int(x), int(row), Palette[color])
 	}
 }
 

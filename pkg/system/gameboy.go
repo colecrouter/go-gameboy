@@ -30,7 +30,6 @@ type GameBoy struct {
 	displayTicker *time.Ticker
 	done          chan struct{}
 	totalCycles   int64 // added to track CPU cycles
-	// fastMode      bool  // new flag for fast execution (bypasses tickers)
 }
 
 func NewGameBoy() *GameBoy {
@@ -60,7 +59,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
-	gb.Display = &monochrome.Display{}
+	gb.Display = monochrome.NewDisplay()
 	gb.PPU = ppu.NewPPU(vramModule, oamModule, gb.Display, gb.IO)
 
 	return gb
