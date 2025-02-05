@@ -20,11 +20,11 @@ func TestPPU(t *testing.T) {
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	regs := &registers.Registers{}
+	display := &monochrome.Display{}
 
 	// Set the palette to a simple 4-color palette
 	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
 
-	display := monochrome.NewTerminalDisplay()
 	ppuUnit := NewPPU(vramModule, oamModule, display, regs)
 
 	ppuUnit.registers.LCDControl.Use8000Method = true
