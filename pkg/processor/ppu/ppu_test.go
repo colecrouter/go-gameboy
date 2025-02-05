@@ -2,6 +2,7 @@ package ppu
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -12,38 +13,21 @@ import (
 )
 
 // Use a dummy tile that returns a valid color index (e.g. 1) for all pixels.
-var dummyTileData = []uint8{
-	// Each row: low=0xFF (all bits 1) and high=0x00 (all bits 0) => pixel color = 1 for every pixel.
-	0xFF, 0x00, // row 0
-	0xFF, 0x00, // row 1
-	0xFF, 0x00, // row 2
-	0xFF, 0x00, // row 3
-	0xFF, 0x00, // row 4
-	0xFF, 0x00, // row 5
-	0xFF, 0x00, // row 6
-	0xFF, 0x00, // row 7
-}
+var dummyTileData = [16]uint8{0x3c, 0x7e, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x7e, 0x5e, 0x7e, 0x0a, 0x7c, 0x56, 0x38, 0x7c}
 
 func TestPPU(t *testing.T) {
 	// Set up VRAM, OAM, registers, and display
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	regs := &registers.Registers{}
-	// Initialize registers with known values
-	regs.LY = 0
-	regs.ScrollX = 0
-	regs.ScrollY = 0
-	regs.PositionX = 0 // window position if used
-	regs.PositionY = 0
-	// Set tile data mode to unsigned (dummy tile data is loaded accordingly)
-	regs.LCDControl.UseSecondaryTileData = true
-	regs.LCDControl.BackgroundUseSecondaryTileMap = false
-	regs.LCDControl.WindowUseSecondTileMap = false
-	// Initialize a simple grayscale palette mapping (index 0 -> black, index 1 -> dark gray, etc.)
-	regs.PaletteData.Colors = [4]uint8{0, 85, 170, 255}
+
+	// Set the palette to a simple 4-color palette
+	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
 
 	display := monochrome.NewTerminalDisplay()
 	ppuUnit := NewPPU(vramModule, oamModule, display, regs)
+
+	ppuUnit.registers.LCDControl.Use8000Method = true
 
 	// Load dummyTileData into the first tile (16 bytes per tile)
 	for i, b := range dummyTileData {
@@ -60,13 +44,16 @@ func TestPPU(t *testing.T) {
 		ppuUnit.Clock()
 	}
 
-	// Print out one scanline explicitly for debug purposes.
 	scanline := ppuUnit.getScanline()
-	fmt.Printf("Debug (test): First 8 pixels of scanline: %v\n", scanline[:8])
+
+	expected := []uint8{0, 1, 1, 1, 3, 1, 3, 0, 0, 1, 1, 1, 3, 1, 3, 0}
+	result := scanline[:16]
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Expected scanline\n\t%v\n—got\n\t%v", expected, result)
+	}
 
 	// Small pause to allow the display to update
 	time.Sleep(500 * time.Millisecond)
 	fmt.Println("Test complete. Check debug logs and display output.")
-
-	display.Clock()
 }

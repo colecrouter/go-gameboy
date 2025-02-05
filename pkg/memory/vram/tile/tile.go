@@ -15,8 +15,8 @@ func (t *Tile) readPixel(row, col uint8) uint8 {
 	return msb | (lsb << 1)
 }
 
-func FromBytes(bytes [16]uint8) Tile {
-	t := Tile{Bytes: bytes, initialized: true}
+func FromBytes(bytes [16]uint8) *Tile {
+	t := &Tile{Bytes: bytes, initialized: true}
 
 	for row := uint8(0); row < TILE_SIZE; row++ {
 		for col := uint8(0); col < TILE_SIZE; col++ {

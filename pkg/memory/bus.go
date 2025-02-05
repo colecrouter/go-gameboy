@@ -48,7 +48,7 @@ func PrintMemory(d Device, start, end uint16) {
 	}
 
 	// Add column headers
-	fmt.Printf("\nREL  FIXED     ") // Header for relative and fixed offsets
+	fmt.Printf("\nREL    FIXED   ") // Header for relative and fixed offsets
 	for i := 0; i < 16; i++ {
 		fmt.Printf("%02X ", i)
 	}

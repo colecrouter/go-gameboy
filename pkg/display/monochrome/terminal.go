@@ -1,20 +1,19 @@
 package monochrome
 
-import "fmt"
+import (
+	"fmt"
 
-const WIDTH = 160
-const HEIGHT = 144
-const TILES_WIDTH = WIDTH / 8
-const TILES_HEIGHT = HEIGHT / 8
+	"github.com/colecrouter/gameboy-go/pkg/display"
+)
 
 type TerminalDisplay struct {
 	initialized  bool
-	buffer       [HEIGHT][WIDTH]uint8
+	buffer       [display.HEIGHT][display.WIDTH]uint8
 	stringBuffer string
 }
 
 func (t *TerminalDisplay) DrawScanline(row uint8, line []uint8) {
-	for x := 0; x < WIDTH; x++ {
+	for x := 0; x < display.WIDTH; x++ {
 		color := line[x]
 		t.buffer[row][x] = color
 	}
@@ -25,7 +24,7 @@ func (t *TerminalDisplay) Clock() {
 		panic("TerminalDisplay not initialized")
 	}
 
-	newStringBuffer := ""
+	var newStringBuffer string
 
 	// Clear the screen
 	newStringBuffer += "\033[2J"
@@ -33,8 +32,8 @@ func (t *TerminalDisplay) Clock() {
 	newStringBuffer += "\n"
 
 	// Print the buffer to the terminal
-	for y := 0; y < HEIGHT; y++ {
-		for x := 0; x < WIDTH; x++ {
+	for y := 0; y < display.HEIGHT; y++ {
+		for x := 0; x < display.WIDTH; x++ {
 			color := t.buffer[y][x]
 			switch color {
 			case 0:
@@ -50,9 +49,7 @@ func (t *TerminalDisplay) Clock() {
 		newStringBuffer += "\n"
 	}
 
-	// Move cursor to top left
-	// newStringBuffer += "\033[H"
-
+	// Only update the terminal if the buffer has changed
 	if t.stringBuffer != newStringBuffer {
 		// Print the buffer to the terminal
 		fmt.Print(newStringBuffer)
@@ -63,8 +60,8 @@ func (t *TerminalDisplay) Clock() {
 func NewTerminalDisplay() *TerminalDisplay {
 	t := &TerminalDisplay{initialized: true}
 
-	for y := 0; y < HEIGHT; y++ {
-		for x := 0; x < WIDTH; x++ {
+	for y := 0; y < display.HEIGHT; y++ {
+		for x := 0; x < display.WIDTH; x++ {
 			t.buffer[y][x] = 0
 		}
 	}

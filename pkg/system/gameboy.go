@@ -93,9 +93,6 @@ func (gb *GameBoy) Start() {
 			if remainder := frameDuration - elapsed; remainder > 0 {
 				time.Sleep(remainder)
 			}
-
-			// Print tilemap 1
-			memory.PrintMemory(gb.memoryBus, 0x9800, 0x9BFF)
 		}
 	}
 	// }

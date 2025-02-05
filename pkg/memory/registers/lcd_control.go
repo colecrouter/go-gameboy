@@ -6,7 +6,7 @@ type LCDControl struct {
 	EnableLCD                     bool // Bit 7 - LCD Display Enable             (0=Off, 1=On)
 	WindowUseSecondTileMap        bool // Bit 6 - Window Tile Map Display Select (0=9800-9BFF, 1=9C00-9FFF)
 	EnableWindow                  bool // Bit 5 - Window Display Enable          (0=Off, 1=On)
-	UseSecondaryTileData          bool // Bit 4 - BG & Window Tile Data Select   (0=8800-97FF, 1=8000-8FFF)
+	Use8000Method                 bool // Bit 4 - BG & Window Tile Data Select   (0=8800-97FF, 1=8000-8FFF)
 	BackgroundUseSecondaryTileMap bool // Bit 3 - BG Tile Map Display Select     (0=9800-9BFF, 1=9C00-9FFF)
 	Sprites8x16                   bool // Bit 2 - OBJ (Sprite) Size              (0=8x8, 1=8x16)
 	EnableSprites                 bool // Bit 1 - OBJ (Sprite) Display Enable    (0=Off, 1=On)
@@ -28,7 +28,7 @@ func (l *LCDControl) Read(addr uint16) uint8 {
 	if l.EnableWindow {
 		val |= 1 << 5
 	}
-	if l.UseSecondaryTileData {
+	if l.Use8000Method {
 		val |= 1 << 4
 	}
 	if l.BackgroundUseSecondaryTileMap {
@@ -55,7 +55,7 @@ func (l *LCDControl) Write(addr uint16, value uint8) {
 	l.EnableLCD = value&(1<<7) != 0
 	l.WindowUseSecondTileMap = value&(1<<6) != 0
 	l.EnableWindow = value&(1<<5) != 0
-	l.UseSecondaryTileData = value&(1<<4) != 0
+	l.Use8000Method = value&(1<<4) != 0
 	l.BackgroundUseSecondaryTileMap = value&(1<<3) != 0
 	l.Sprites8x16 = value&(1<<2) != 0
 	l.EnableSprites = value&(1<<1) != 0
