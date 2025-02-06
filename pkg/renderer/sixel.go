@@ -11,11 +11,10 @@ import (
 )
 
 // RenderSixel converts an image.Image into a string containing its Sixel‐encoded data.
-// It uses a maximum palette size of 256 colors (with a reserved transparency key).
-// The algorithm uses median cut quantization (with an optional Floyd–Steinberg dithering)
-// and then renders the image six rows at a time, with run‐length encoding.
+// It uses a maximum palette size of 256 colors and a 1:1 aspect ratio so the image
+// will not appear 2× as tall as it really is.
 func RenderSixel(img image.Image) string {
-	// Use a maximum of 256 colors. (Note: color 0 is “reserved” for transparent pixels.)
+	// Use a maximum of 256 colors (0 is a reserved transparency key).
 	const maxColors = 256
 
 	bounds := img.Bounds()
@@ -24,28 +23,39 @@ func RenderSixel(img image.Image) string {
 		return ""
 	}
 
-	// Create a paletted copy of the image.
-	var pal *image.Paletted
+	// Convert to paletted. (Optional dithering with Floyd–Steinberg.)
+	var paletted *image.Paletted
 	if p, ok := img.(*image.Paletted); ok && len(p.Palette) <= maxColors {
-		pal = p
+		paletted = p
 	} else {
-		// Use median cut quantizer (with maxColors-1 colors)
 		quant := median.Quantizer(maxColors - 1)
-		pal = quant.Paletted(img)
-		// Apply Floyd–Steinberg dithering.
-		draw.FloydSteinberg.Draw(pal, bounds, img, bounds.Min)
+		paletted = quant.Paletted(img)
+		draw.FloydSteinberg.Draw(paletted, bounds, img, bounds.Min)
 	}
 
-	// Create an output bytes buffer with a reasonable preallocated capacity.
+	// Preallocate a buffer.
 	outBuf := bytes.NewBuffer(make([]byte, 0, width*height/2))
 
-	// Write the Sixel header:
-	// DECSIXEL Introducer: ESC P 0;0;8q
+	//----------------------------------------------------------------------
+	// 1) Write the Sixel Introducer and Raster Attributes (aspect ratio)
+	//----------------------------------------------------------------------
+	// ESC P 0;0;8q   (introduces Sixel mode)
 	outBuf.Write([]byte{0x1b, 'P', '0', ';', '0', ';', '8', 'q'})
 
-	// Write palette (graphics color definitions). Sixel expects definitions
-	// like: "#<n>;2;<r>;<g>;<b>" with values scaled to a 0–100 range.
-	for i, c := range pal.Palette {
+	// "1;1;<width>;<height>   => sets the pixel aspect ratio to 1:1
+	outBuf.WriteByte('"')
+	outBuf.WriteString("1;1;")
+	outBuf.WriteString(strconv.Itoa(width))
+	outBuf.WriteByte(';')
+	outBuf.WriteString(strconv.Itoa(height))
+
+	// Optionally you could add more parameters if you want to scale or define
+	// an offset, but the above is sufficient to force a 1:1 aspect.
+
+	//----------------------------------------------------------------------
+	// 2) Write palette definitions
+	//----------------------------------------------------------------------
+	for i, c := range paletted.Palette {
 		r32, g32, b32, _ := c.RGBA()
 		r := int(r32 * 100 / 0xffff)
 		g := int(g32 * 100 / 0xffff)
@@ -53,66 +63,63 @@ func RenderSixel(img image.Image) string {
 		writePaletteEntry(outBuf, i, r, g, b)
 	}
 
-	// Sixel image data is emitted six rows at a time.
-	// For each six-row band we will, for each color in our palette (colors 1..N),
-	// create a run-length encoded sequence.
-	nColors := len(pal.Palette)
-	// For each block of 6 rows (vertical band)
+	//----------------------------------------------------------------------
+	// 3) Encode the image data row by row (in 6-row bands)
+	//----------------------------------------------------------------------
+	nColors := len(paletted.Palette)
 	yBands := (height + 5) / 6
+
 	for z := 0; z < yBands; z++ {
-		// “New line” indicator except at the top.
 		if z > 0 {
+			// New line in sixel
 			outBuf.WriteByte('-')
 		}
-		// Process each color sequentially.
-		// (Sixel color indices are 1–nColors; we assume 0 is reserved for transparency.)
+		// For each color in our palette, generate sixels.
 		for col := 1; col <= nColors; col++ {
-			// Output a color change command.
 			writeColorChange(outBuf, col)
 
-			// For each column x in the image we form a 6‐bit value.
 			var runCount int
-			var currentVal byte // current sixel value (0..63)
+			var currentVal byte // will hold the 6 bits
 			for x := 0; x < width; x++ {
-				var sixel byte = 0
-				// Process a vertical “column” of up to 6 pixels.
+				var sixel byte
 				for dy := 0; dy < 6; dy++ {
 					y := z*6 + dy
 					if y >= height {
 						continue
 					}
-					// Only if the pixel isn’t fully transparent.
-					px := img.At(x, y)
-					_, _, _, a := px.RGBA()
-					if a == 0 {
-						// Transparent pixel; leave bit off.
+					_, _, _, alpha := img.At(x, y).RGBA()
+					if alpha == 0 {
+						// Transparent
 						continue
 					}
-					// Check if the pixel’s palette index (shifted to 1..nColors) equals col.
-					if int(pal.ColorIndexAt(x, y))+1 == col {
+					if int(paletted.ColorIndexAt(x, y))+1 == col {
 						sixel |= 1 << uint(dy)
 					}
 				}
-				// On the first column, initialize the run.
+
+				// Run-length encode
 				if x == 0 {
 					currentVal = sixel
 					runCount = 1
-				} else if sixel == currentVal {
-					runCount++
 				} else {
-					flushRun(outBuf, runCount, currentVal)
-					currentVal = sixel
-					runCount = 1
+					if sixel == currentVal {
+						runCount++
+					} else {
+						flushRun(outBuf, runCount, currentVal)
+						currentVal = sixel
+						runCount = 1
+					}
 				}
 			}
+			// Flush out the final run in this color band
 			flushRun(outBuf, runCount, currentVal)
 		}
 	}
 
-	// Write the terminator: ESC \
+	// End the sixel data: ESC \
 	outBuf.Write([]byte{0x1b, '\\'})
 
-	// Use an unsafe conversion to turn the buffer’s bytes into a string without a copy.
+	// Convert []byte to string with an unsafe pointer to avoid copying.
 	return unsafeString(outBuf.Bytes())
 }
 
@@ -120,44 +127,39 @@ func RenderSixel(img image.Image) string {
 // (starting at 0, but the Sixel command uses index+1) and the red, green, blue values.
 func writePaletteEntry(buf *bytes.Buffer, index, r, g, b int) {
 	buf.WriteByte('#')
-	// Palette numbering in Sixel starts at 1.
-	buf.Write(strconv.AppendInt(nil, int64(index+1), 10))
+	buf.WriteString(strconv.Itoa(index + 1)) // Sixel color indices start from 1
 	buf.WriteString(";2;")
-	buf.Write(strconv.AppendInt(nil, int64(r), 10))
+	buf.WriteString(strconv.Itoa(r))
 	buf.WriteByte(';')
-	buf.Write(strconv.AppendInt(nil, int64(g), 10))
+	buf.WriteString(strconv.Itoa(g))
 	buf.WriteByte(';')
-	buf.Write(strconv.AppendInt(nil, int64(b), 10))
+	buf.WriteString(strconv.Itoa(b))
 }
 
-// writeColorChange writes a color change command for the given (1‐indexed) color.
+// writeColorChange writes a color change command for the given (1-indexed) color.
 func writeColorChange(buf *bytes.Buffer, col int) {
 	buf.WriteByte('#')
-	// Use decimal conversion for the color number.
-	// (For numbers with more than one digit, strconv.AppendInt handles it correctly.)
-	buf.Write(strconv.AppendInt(nil, int64(col), 10))
+	buf.WriteString(strconv.Itoa(col))
 }
 
 // flushRun writes run‑length encoded sixel data for a given run.
-// In Sixel the sixel code is given by: 63 + <6‐bit value>.
-// If count is 1, the sixel character (byte) is written directly;
-// if count > 1 the sequence is written as: "!" followed by the count (in decimal) and then the sixel.
 func flushRun(buf *bytes.Buffer, count int, val byte) {
 	if count <= 0 {
 		return
 	}
+	// Each pixel pattern is offset by 63 in Sixel
 	sixelChar := val + 63
+	// If count>1, we do "!<count><sixel_char>" for run-length encoding.
 	if count == 1 {
 		buf.WriteByte(sixelChar)
 	} else {
 		buf.WriteByte('!')
-		buf.Write(strconv.AppendInt(nil, int64(count), 10))
+		buf.WriteString(strconv.Itoa(count))
 		buf.WriteByte(sixelChar)
 	}
 }
 
-// unsafeString converts a byte slice to a string without copying the data.
-// Use with care!
+// unsafeString allows us to convert a []byte to string without copying the data.
 func unsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }

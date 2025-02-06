@@ -103,7 +103,10 @@ func (a *Application) render() {
 
 	var screens [][]string
 	if a.gb.Display != nil {
-		screens = append(screens, utils.DrawBox(a.gb.Display.Image(), &utils.BoxOptions{Border: utils.BorderSingle, Title: "GameBoy Display"}))
+		screens = append(screens, utils.DrawBox(a.gb.Display.Image(), &utils.BoxOptions{Border: utils.BorderSingle, Title: "GameBoy"}))
+
+		r := a.gb.Display.Image().Bounds()
+		_ = r
 	}
 	if a.openMenu != 0 && a.menus[a.openMenu] != nil {
 		screens = append(screens, utils.DrawBox(a.menus[a.openMenu].Image(), &utils.BoxOptions{Border: utils.BorderDouble, Title: "Tile Map"}))

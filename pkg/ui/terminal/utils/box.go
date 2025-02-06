@@ -61,8 +61,8 @@ func DrawBox(img image.Image, options *BoxOptions) []string {
 	content := renderer.RenderSixel(img)
 
 	bounds := img.Bounds()
-	width := bounds.Dx()/8 + 2
-	horizontalCount := (width - 2) * 2
+	width := bounds.Dx() / 22
+	horizontalCount := (width) * 2
 
 	topLine := border.TopLeft + " " + options.Title + " " + repeat(border.Horizontal, horizontalCount-len(options.Title)-2) + border.TopRight
 	middleLine := content
