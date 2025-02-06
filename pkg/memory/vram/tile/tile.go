@@ -1,5 +1,11 @@
 package tile
 
+import (
+	"image"
+
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
+)
+
 const TILE_SIZE = 8
 
 type Tile struct {
@@ -25,4 +31,16 @@ func FromBytes(bytes [16]uint8) *Tile {
 	}
 
 	return t
+}
+
+func (t *Tile) Image() *image.Paletted {
+	img := image.NewPaletted(image.Rect(0, 0, TILE_SIZE, TILE_SIZE), monochrome.Palette)
+
+	for row := uint8(0); row < TILE_SIZE; row++ {
+		for col := uint8(0); col < TILE_SIZE; col++ {
+			img.Set(int(col), int(row), monochrome.Palette[t.Pixels[row][col]])
+		}
+	}
+
+	return img
 }

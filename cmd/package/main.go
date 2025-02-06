@@ -20,7 +20,6 @@ func main() {
 	gb.InsertCartridge(game)
 
 	app := terminal.NewApplication(gb)
-	if err := app.Run(); err != nil {
-		log.Fatalln(err)
-	}
+
+	app.Run()
 }

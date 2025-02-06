@@ -1,9 +1,7 @@
 package ppu
 
 import (
-	// added for debugging
-
-	"github.com/colecrouter/gameboy-go/pkg/display"
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
@@ -12,7 +10,7 @@ import (
 type PPU struct {
 	vram             *vram.VRAM
 	oam              *memory.OAM
-	display          display.Display
+	display          *lcd.Display
 	registers        *registers.Registers
 	lineCycleCounter uint16
 }
@@ -34,7 +32,7 @@ const (
 )
 
 // NewPPU creates a new PPU instance
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, display display.Display, registers *registers.Registers) *PPU {
+func NewPPU(vram *vram.VRAM, oam *memory.OAM, display *lcd.Display, registers *registers.Registers) *PPU {
 	return &PPU{
 		vram:      vram,
 		oam:       oam,
@@ -111,7 +109,7 @@ func (p *PPU) getScanline() []uint8 {
 		scrolledY := p.registers.LY + p.registers.ScrollY
 		scrolledX := p.registers.ScrollX + pixelX
 
-		tile := p.vram.ReadMappedTileAt(scrolledX, scrolledY, bgMapMode, addressingMode)
+		tile := p.vram.GetMappedTile(scrolledX, scrolledY, bgMapMode, addressingMode)
 		if tile == nil {
 			continue
 		}

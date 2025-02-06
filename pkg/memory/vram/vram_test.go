@@ -23,7 +23,7 @@ func TestReadMappedTileAt(t *testing.T) {
 	// Set the tile map entry to index 10.
 	v.tileMap0[10] = 10
 
-	resultTile1 := v.ReadMappedTileAt(10*8, 0, false, Mode8000)
+	resultTile1 := v.GetMappedTile(10*8, 0, false, Mode8000)
 	if !reflect.DeepEqual(resultTile1, expectedTile1) {
 		t.Errorf("Mode8000: expected tile %+v, got %+v", expectedTile1, resultTile1)
 	}
@@ -40,7 +40,7 @@ func TestReadMappedTileAt(t *testing.T) {
 
 	v.tiles[130] = expectedTile2
 
-	resultTile2 := v.ReadMappedTileAt(0, 0, false, Mode8800)
+	resultTile2 := v.GetMappedTile(0, 0, false, Mode8800)
 	if !reflect.DeepEqual(resultTile2, expectedTile2) {
 		t.Errorf("Mode8800: expected tile %+v, got %+v", expectedTile2, resultTile2)
 	}
@@ -68,7 +68,7 @@ func TestTileRendering(t *testing.T) {
 
 	// Read the tile data back out and compare
 	// By default, everything should be 0, so getting a blankly mapped tile should return the tile at index 0.
-	tile := v.ReadMappedTileAt(0, 0, false, Mode8000)
+	tile := v.GetMappedTile(0, 0, false, Mode8000)
 
 	// Check that the tile data matches the expected data
 	for y, row := range buffer {

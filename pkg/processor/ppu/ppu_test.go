@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
@@ -20,7 +20,7 @@ func TestPPU(t *testing.T) {
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	regs := &registers.Registers{}
-	display := &monochrome.Display{}
+	display := &lcd.Display{}
 
 	// Set the palette to a simple 4-color palette
 	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})

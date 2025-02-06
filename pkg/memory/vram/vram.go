@@ -4,10 +4,13 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
 )
 
+type TileData [0x1800]uint8
+type TileMap [0x400]uint8
+
 type VRAM struct {
-	tileData [0x1800]uint8 // 0x8000-0x9FFF
-	tileMap0 [0x400]uint8  // 0x9800-0x9BFF
-	tileMap1 [0x400]uint8  // 0x9C00-0x9FFF
+	tileData TileData // 0x8000-0x9FFF
+	tileMap0 TileMap  // 0x9800-0x9BFF
+	tileMap1 TileMap  // 0x9C00-0x9FFF
 
 	tiles [384]*tile.Tile
 }
@@ -73,8 +76,8 @@ const (
 	Map1 TileMapMode = true
 )
 
-// ReadMappedTileAt reads a tile from the VRAM at the given pixel coordinates.
-func (v *VRAM) ReadMappedTileAt(x, y uint8, mapMode TileMapMode, addressingMode TileAddressingMode) *tile.Tile {
+// GetMappedTile reads a tile from the VRAM at the given pixel coordinates.
+func (v *VRAM) GetMappedTile(x, y uint8, mapMode TileMapMode, addressingMode TileAddressingMode) *tile.Tile {
 	tileX := x / 8
 	tileY := y / 8
 	mapIndex := uint16(tileY)*32 + uint16(tileX) // assuming a 32-tile wide tilemap; adjust if needed
@@ -96,13 +99,10 @@ func (v *VRAM) ReadMappedTileAt(x, y uint8, mapMode TileMapMode, addressingMode 
 		panic("Invalid addressing mode")
 	}
 
-	if effectiveIndex == 270 {
-		println("woo")
-	}
+	return v.GetTile(effectiveIndex)
+}
 
-	if effectiveIndex != 0 {
-		// fmt.Println("Should be drawing tile", effectiveIndex)
-	}
-
-	return v.tiles[effectiveIndex]
+// GetTile reads a tile from the VRAM at the given index.
+func (v *VRAM) GetTile(index int) *tile.Tile {
+	return v.tiles[index]
 }

@@ -1,1 +1,8 @@
 *.gb
+
+# Go Debugging
+debug
+debug.test
+__debug_bin
+*.exe
+*.test

@@ -3,7 +3,7 @@ package system
 import (
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
@@ -19,11 +19,12 @@ const DISPLAY_SPEED = 60 // 60 Hz
 const DISPLAY_DELAY = time.Duration((float32(time.Second) * 1.0045) / DISPLAY_SPEED)
 
 type GameBoy struct {
-	Display *monochrome.Display
+	Display *lcd.Display
 	Bus     *memory.Bus
 	IO      *registers.Registers
 	CPU     *lr35902.LR35902
 	PPU     *ppu.PPU
+	VRAM    *vram.VRAM
 
 	cpuTicker     *time.Ticker
 	ppuTicker     *time.Ticker
@@ -35,7 +36,7 @@ type GameBoy struct {
 func NewGameBoy() *GameBoy {
 	gb := &GameBoy{}
 	gb.Bus = &memory.Bus{}
-	vramModule := &vram.VRAM{}
+	gb.VRAM = &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	gb.IO = &registers.Registers{}
 	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO)
@@ -47,7 +48,7 @@ func NewGameBoy() *GameBoy {
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
 	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx aka mapper
-	gb.Bus.AddDevice(0x8000, 0x9FFF, vramModule)                                   // VRAM
+	gb.Bus.AddDevice(0x8000, 0x9FFF, gb.VRAM)                                      // VRAM
 	gb.Bus.AddDevice(0xA000, 0xBFFF, &memory.Memory{Buffer: make([]byte, 0x2000)}) // External RAM
 	gb.Bus.AddDevice(0xC000, 0xCFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
 	gb.Bus.AddDevice(0xD000, 0xDFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
@@ -59,8 +60,8 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
-	gb.Display = monochrome.NewDisplay()
-	gb.PPU = ppu.NewPPU(vramModule, oamModule, gb.Display, gb.IO)
+	gb.Display = lcd.NewDisplay()
+	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.Display, gb.IO)
 
 	return gb
 }
