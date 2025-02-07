@@ -32,5 +32,3 @@ func TestRenderSixel(t *testing.T) {
 		t.Errorf("expected terminator %q, got %q", expectedTerminator, result[len(result)-len(expectedTerminator):])
 	}
 }
-
-// ...additional tests if needed...

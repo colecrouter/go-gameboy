@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"image"
 	"strings"
+
+	"golang.org/x/image/draw"
 
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/renderer"
@@ -14,6 +17,8 @@ const (
 	BorderSingle
 	BorderDouble
 )
+
+const IMAGE_SCALE = 2
 
 type BoxOptions struct {
 	Border
@@ -62,10 +67,19 @@ func DrawBox(d display.Display, options *BoxOptions) []string {
 	var isImage bool
 	switch v := d.(type) {
 	case display.ImageDisplay:
-		content = append(content, renderer.RenderSixel(v.Image()))
+		var img = v.Image()
 
-		imageSize := v.Image().Bounds().Dx() / 11 // Wooo magic number
-		boxMinSize := len(d.Config().Title) + 4   // Title + 2 spaces + 2 borders
+		// Resize the image
+		if IMAGE_SCALE != 1 {
+			resized := image.NewRGBA(image.Rect(0, 0, img.Bounds().Dx()*IMAGE_SCALE, img.Bounds().Dy()*IMAGE_SCALE))
+			draw.NearestNeighbor.Scale(resized, resized.Bounds(), img, img.Bounds(), draw.Over, nil)
+			img = resized
+		}
+
+		content = append(content, renderer.RenderSixel(img))
+
+		imageSize := img.Bounds().Dx() / 11     // Wooo magic number
+		boxMinSize := len(d.Config().Title) + 4 // Title + 2 spaces + 2 borders
 
 		width = max(imageSize, boxMinSize)
 		isImage = true
