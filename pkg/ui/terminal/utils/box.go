@@ -78,7 +78,7 @@ func DrawBox(d display.Display, options *BoxOptions) []string {
 
 		content = append(content, renderer.RenderSixel(img))
 
-		imageSize := img.Bounds().Dx() / 11     // Wooo magic number
+		imageSize := img.Bounds().Dx()/12 + 4   // Wooo magic number
 		boxMinSize := len(d.Config().Title) + 4 // Title + 2 spaces + 2 borders
 
 		width = max(imageSize, boxMinSize)

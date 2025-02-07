@@ -19,7 +19,11 @@ type TileMenu struct {
 }
 
 func NewTileDebug(v *vram.VRAM, p *color.Palette) *TileMenu {
-	return &TileMenu{vram: v, palette: p, config: display.Config{Width: GRID_WIDTH, Title: "Tile Viewer"}}
+	return &TileMenu{
+		vram:    v,
+		palette: p,
+		config:  display.Config{Title: "Tile Viewer"},
+	}
 }
 
 func (t *TileMenu) Image() image.Image {
@@ -48,6 +52,21 @@ func (t *TileMenu) Clock() {
 					t.img.Set(x+tileX*8, y+tileY*8, tileImage.At(x, y))
 				}
 			}
+		}
+	}
+
+	// Draw gridlines between tiles
+	gridColor := color.Black
+	// Draw horizontal gridlines every 8 pixels
+	for y := 8; y < GRID_HEIGHT; y += 8 {
+		for x := 0; x < GRID_WIDTH; x++ {
+			t.img.Set(x, y, gridColor)
+		}
+	}
+	// Draw vertical gridlines every 8 pixels
+	for x := 8; x < GRID_WIDTH; x += 8 {
+		for y := 0; y < GRID_HEIGHT; y++ {
+			t.img.Set(x, y, gridColor)
 		}
 	}
 
