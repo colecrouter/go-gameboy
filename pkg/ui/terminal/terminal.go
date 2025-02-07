@@ -12,6 +12,7 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/display/debug"
 	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
 	"github.com/colecrouter/gameboy-go/pkg/system"
+	"github.com/colecrouter/gameboy-go/pkg/ui/logger"
 	"github.com/colecrouter/gameboy-go/pkg/ui/terminal/utils"
 	"golang.org/x/term"
 )
@@ -29,6 +30,7 @@ func NewApplication(gb *system.GameBoy) *Application {
 	app := &Application{gb: gb}
 	app.menus = map[rune]display.Display{
 		'v': debug.NewTileDebug(gb.VRAM, &monochrome.Palette),
+		'l': debug.NewLogMenu(),
 	}
 	app.refresh = time.NewTicker(16 * time.Millisecond)
 
@@ -45,6 +47,12 @@ func (a *Application) Run() {
 		panic(err)
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	// --- NEW: Redirect stdout and stderr to the log menu ---
+	// Cast the log menu from the menus map.
+	if logMenu, ok := a.menus['l'].(*debug.LogMenu); ok {
+		logger.RedirectOutput(logMenu)
+	}
 
 	// Create channels for keyboard input and OS signals.
 	inputChan := make(chan rune)
@@ -103,13 +111,14 @@ func (a *Application) render() {
 
 	var screens [][]string
 	if a.gb.Display != nil {
-		screens = append(screens, utils.DrawBox(a.gb.Display.Image(), &utils.BoxOptions{Border: utils.BorderSingle, Title: "GameBoy"}))
+		screens = append(screens, utils.DrawBox(a.gb.Display, &utils.BoxOptions{Border: utils.BorderSingle}))
 
 		r := a.gb.Display.Image().Bounds()
 		_ = r
 	}
 	if a.openMenu != 0 && a.menus[a.openMenu] != nil {
-		screens = append(screens, utils.DrawBox(a.menus[a.openMenu].Image(), &utils.BoxOptions{Border: utils.BorderDouble, Title: "Tile Map"}))
+		m := a.menus[a.openMenu]
+		screens = append(screens, utils.DrawBox(m, &utils.BoxOptions{Border: utils.BorderDouble}))
 	}
 
 	var output string
@@ -121,8 +130,9 @@ func (a *Application) render() {
 	}
 
 	if output != a.lastOutput {
-		fmt.Print(clearScreen)
-		fmt.Print(output)
+		// Write directly to the original stdout.
+		logger.OriginalOutput.Write([]byte(clearScreen))
+		logger.OriginalOutput.Write([]byte(output))
 		a.lastOutput = output
 	}
 }

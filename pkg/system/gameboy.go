@@ -1,6 +1,7 @@
 package system
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
@@ -67,6 +68,8 @@ func NewGameBoy() *GameBoy {
 }
 
 func (gb *GameBoy) Start() {
+	fmt.Println("Starting GameBoy")
+
 	frameDuration := DISPLAY_DELAY   // ~1/60 second
 	targetCycles := CLOCK_SPEED / 60 // cycles per frame
 	for {
