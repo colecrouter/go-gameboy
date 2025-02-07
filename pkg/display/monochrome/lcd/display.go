@@ -39,10 +39,8 @@ func (d *Display) DrawScanline(row uint8, line []uint8) {
 		panic("Display not initialised")
 	}
 
-	for x := 0; x < WIDTH; x++ {
-		color := line[x]
-		d.image.Set(int(x), int(row), monochrome.Palette[color])
-	}
+	offset := int(row) * d.image.Stride
+	copy(d.image.Pix[offset:offset+WIDTH], line)
 }
 
 func (d *Display) Config() *display.Config {
