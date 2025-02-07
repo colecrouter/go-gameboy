@@ -55,12 +55,15 @@ func (c *LR35902) Step() int {
 	op := instruction.op
 	cycles := instruction.c
 
-	a := c.io.LY
-	_ = a
 	op(c)
 
 	// Increment PC
 	c.registers.pc++
+
+	if c.registers.pc == 0xf9 {
+		a := c.bus.Read(toRegisterPair(c.registers.h, c.registers.l))
+		_ = a
+	}
 
 	return cycles
 }
@@ -92,9 +95,9 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 
 // PrintRegisters prints the current state of the CPU registers and flags.
 func (c *LR35902) PrintRegisters() {
-	fmt.Printf("\nRegisters:\n")
-	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\n", c.registers.a, c.registers.b, c.registers.c, c.registers.d, c.registers.e)
-	fmt.Printf("H: 0x%02X  L: 0x%02X\n", c.registers.h, c.registers.l)
-	fmt.Printf("SP: 0x%04X  PC: 0x%04X\n", c.registers.sp, c.registers.pc)
-	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
+	fmt.Printf("\r\nRegisters:\r\n")
+	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\r\n", c.registers.a, c.registers.b, c.registers.c, c.registers.d, c.registers.e)
+	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.registers.h, c.registers.l)
+	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.registers.sp, c.registers.pc)
+	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
 }

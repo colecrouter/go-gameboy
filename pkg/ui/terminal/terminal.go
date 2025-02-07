@@ -42,10 +42,7 @@ func (a *Application) Run() {
 	go a.gb.Start()
 
 	// Set terminal to raw mode.
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
-	}
+	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
 	// --- NEW: Redirect stdout and stderr to the log menu ---

@@ -230,14 +230,14 @@ var instructions = map[uint8]instruction{
 	}},
 	// INC (HL)
 	0x34: {c: 12, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.inc8(&val)
 		c.bus.Write(addr, val)
 	}},
 	// DEC (HL)
 	0x35: {c: 12, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.dec8(&val)
 		c.bus.Write(addr, val)
@@ -245,7 +245,7 @@ var instructions = map[uint8]instruction{
 	// LD (HL),d8
 	0x36: {c: 12, op: func(c *LR35902) {
 		val := c.getImmediate8()
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, val)
 	}},
 	// SCF
@@ -310,7 +310,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD B,(HL)
 	0x46: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.b = c.bus.Read(addr)
 	}},
 	// LD B,A
@@ -343,7 +343,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD C,(HL)
 	0x4E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.c = c.bus.Read(addr)
 	}},
 	// LD C,A
@@ -376,7 +376,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD D,(HL)
 	0x56: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.d = c.bus.Read(addr)
 	}},
 	// LD D,A
@@ -409,7 +409,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD E,(HL)
 	0x5E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.e = c.bus.Read(addr)
 	}},
 	// LD E,A
@@ -442,7 +442,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD H,(HL)
 	0x66: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.h = c.bus.Read(addr)
 	}},
 	// LD H,A
@@ -475,7 +475,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD L,(HL)
 	0x6E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.l = c.bus.Read(addr)
 	}},
 	// LD L,A
@@ -484,39 +484,39 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD (HL),B
 	0x70: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.b)
 	}},
 	// LD (HL),C
 	0x71: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.c)
 	}},
 	// LD (HL),D
 	0x72: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.d)
 	}},
 	// LD (HL),E
 	0x73: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.e)
 	}},
 	// LD (HL),H
 	0x74: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.h)
 	}},
 	// LD (HL),L
 	0x75: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.l)
 	}},
 	// HALT
 	// 0x76: /* HALT - no helper, leave commented */
 	// LD (HL),A
 	0x77: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.bus.Write(addr, c.registers.a)
 	}},
 	// LD A,B
@@ -545,7 +545,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// LD A,(HL)
 	0x7E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		c.registers.a = c.bus.Read(addr)
 	}},
 	// LD A,A
@@ -578,7 +578,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// ADD A,(HL)
 	0x86: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.add8(&c.registers.a, val)
 	}},
@@ -612,7 +612,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// ADC A,(HL)
 	0x8E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.addc8(&c.registers.a, val)
 	}},
@@ -646,7 +646,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// SUB (HL)
 	0x96: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.sub8(&c.registers.a, val)
 	}},
@@ -680,7 +680,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// SBC A,(HL)
 	0x9E: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.subc8(&c.registers.a, val)
 	}},
@@ -714,7 +714,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// AND (HL)
 	0xA6: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.and8(&c.registers.a, val)
 	}},
@@ -748,7 +748,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// XOR (HL)
 	0xAE: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.xor8(&c.registers.a, val)
 	}},
@@ -782,7 +782,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// OR (HL)
 	0xB6: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.or8(&c.registers.a, val)
 	}},
@@ -816,9 +816,11 @@ var instructions = map[uint8]instruction{
 	}},
 	// CP (HL)
 	0xBE: {c: 8, op: func(c *LR35902) {
-		addr := toRegisterPair(c.registers.l, c.registers.h)
+		addr := toRegisterPair(c.registers.h, c.registers.l)
 		val := c.bus.Read(addr)
 		c.cp8(c.registers.a, val)
+		a := 1
+		_ = a
 	}},
 	// CP A
 	0xBF: {c: 4, op: func(c *LR35902) {
@@ -978,7 +980,7 @@ var instructions = map[uint8]instruction{
 	}},
 	// JP (HL)
 	0xE9: {c: 4, op: func(c *LR35902) {
-		c.registers.pc = toRegisterPair(c.registers.l, c.registers.h)
+		c.registers.pc = toRegisterPair(c.registers.h, c.registers.l)
 	}},
 	// LD (a16),A
 	0xEA: {c: 16, op: func(c *LR35902) {

@@ -15,12 +15,23 @@ type Registers struct {
 	LYCompare   uint8          // 0x45
 	// TODO http://www.codeslinger.co.uk/pages/projects/gameboy/dma.html
 	// DMA 0x46
-	PaletteData Palette // 0x47
-	PositionY   uint8   // 0x4A
-	PositionX   uint8   // 0x4B
-	// VRAMBank1 bool
-	DisableBootROM bool // 0x50
-	// VRAMDMA uint8
+	PaletteData        Palette // 0x47
+	ObjectPaletteData1 Palette // 0x48
+	ObjectPaletteData2 Palette // 0x49
+	PositionY          uint8   // 0x4A
+	PositionX          uint8   // 0x4B
+
+	// CGB only
+	// TODO
+	VRAMBank1      bool     // 0x4F
+	DisableBootROM bool     // 0x50
+	VRAMDMA        [4]uint8 // 0x51-0x55
+	WRAMBank       uint8    // 0x70
+	GBCPaletteData [8]uint8 // 0x68-0x6B
+	WRAMBank1      bool     // 0x70
+
+	// ???
+	rest [0xFF - 0x71]uint8 // 0x71-0xFF
 }
 
 /*
@@ -74,6 +85,10 @@ func (r *Registers) Read(addr uint16) uint8 {
 		panic("DMA not implemented")
 	case 0x47:
 		return r.PaletteData.Read(0)
+	case 0x48:
+		return r.ObjectPaletteData1.Read(0)
+	case 0x49:
+		return r.ObjectPaletteData2.Read(0)
 	case 0x4A:
 		return r.PositionY
 	case 0x4B:
@@ -83,6 +98,26 @@ func (r *Registers) Read(addr uint16) uint8 {
 			return 1
 		}
 		return 0
+	case 0x4F:
+		if r.VRAMBank1 {
+			return 1
+		}
+		return 0
+	case 0x68, 0x69, 0x6A, 0x6B:
+		offset := addr - 0x68
+		return r.GBCPaletteData[offset]
+	case 0x51, 0x52, 0x53, 0x54, 0x55:
+		offset := addr - 0x51
+		return r.VRAMDMA[offset]
+	case 0x70:
+		if r.WRAMBank1 {
+			return 1
+		}
+		return 0
+	default:
+		if addr >= 0x71 && addr <= 0xFF {
+			return r.rest[addr-0x71]
+		}
 	}
 	panic("Invalid register address")
 }
@@ -123,13 +158,31 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		panic("DMA not implemented")
 	case 0x47:
 		r.PaletteData.Write(0, value)
+	case 0x48:
+		r.ObjectPaletteData1.Write(0, value)
+	case 0x49:
+		r.ObjectPaletteData2.Write(0, value)
 	case 0x4A:
 		r.PositionY = value
 	case 0x4B:
 		r.PositionX = value
 	case 0x50:
 		r.DisableBootROM = value > 0
+	case 0x4F:
+		r.VRAMBank1 = value > 0
+	case 0x68, 0x69, 0x6A, 0x6B:
+		offset := addr - 0x68
+		r.GBCPaletteData[offset] = value
+	case 0x51, 0x52, 0x53, 0x54, 0x55:
+		offset := addr - 0x51
+		r.VRAMDMA[offset] = value
+	case 0x70:
+		r.WRAMBank1 = value > 0
 	default:
+		if addr >= 0x71 && addr <= 0xFF {
+			r.rest[addr-0x71] = value
+			return
+		}
 		panic("Invalid register address")
 	}
 }
