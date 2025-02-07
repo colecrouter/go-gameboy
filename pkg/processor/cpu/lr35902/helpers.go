@@ -231,23 +231,53 @@ func (c *LR35902) rst(addr uint16) {
 	c.registers.pc = addr - 1 // -1 because the PC is incremented after the instruction is fetched
 }
 
+/*
+RLA
+┌────────────────────┐
+│ ┌──┐  ┌─────────┐  │
+└─│CY│<─│7<──────0│<─┘
+  └──┘  └─────────┘
+             A
+
+RLCA
+      ┌──────────────┐
+┌──┐  │ ┌─────────┐  │
+│CY│<─┴─│7<──────0│<─┘
+└──┘    └─────────┘
+             A
+*/
+
 // Rotates/Shifts
-func (c *LR35902) rotate(r *uint8, left bool, carry bool) {
-	var carried uint8
+func (c *LR35902) rotate(r *uint8, left bool, useCarryBit bool) {
+	var carriedOut uint8
+	var carriedIn uint8
 
 	if left {
-		*r = *r<<1 | *r>>7
-		if carry {
-			carried = *r >> 7
-		}
+		carriedOut = *r >> 7
 	} else {
-		*r = *r>>1 | *r<<7
-		if carry {
-			carried = *r << 7
-		}
+		carriedOut = *r & 1
 	}
 
-	c.setFlags(Reset, Reset, Reset, FlagState(carried))
+	if useCarryBit {
+		if c.flags.Carry {
+			carriedIn = 1
+		}
+	} else {
+		carriedIn = carriedOut
+	}
+
+	if left {
+		*r = *r<<1 | carriedIn
+	} else {
+		*r = *r>>1 | (carriedIn << 7)
+	}
+
+	carryFlag := Reset
+	if carriedOut == 1 {
+		carryFlag = Set
+	}
+
+	c.setFlags(Reset, Reset, Reset, carryFlag)
 }
 func (c *LR35902) shift(r *uint8, left bool) {
 	if left {

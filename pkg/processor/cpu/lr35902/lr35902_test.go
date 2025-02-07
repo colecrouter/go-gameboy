@@ -203,6 +203,24 @@ func TestInstructions(t *testing.T) {
 			cpu.registers.a = 0x01
 			cpu.Step()
 			assert.Equal(t, uint8(0x80), cpu.registers.a, "A should rotate right (RRCA)")
+			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RRCA")
+		})
+		t.Run("Instruction: RLA", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0x17)
+			cpu.registers.a = 0x80
+			cpu.flags.Carry = true
+			cpu.Step()
+			assert.Equal(t, uint8(0x01), cpu.registers.a, "A should rotate left (RLA)")
+			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RLA")
+		})
+		t.Run("Instruction: RRA", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0x1F)
+			cpu.registers.a = 0x01
+			cpu.flags.Carry = true
+			cpu.Step()
+			assert.Equal(t, uint8(0x80), cpu.registers.a, "A should rotate right (RRA)")
+			// Updated: Carry flag should remain true after RRA.
+			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RRA")
 		})
 	})
 

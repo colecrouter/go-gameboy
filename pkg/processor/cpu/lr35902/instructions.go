@@ -33,9 +33,9 @@ var instructions = map[uint8]instruction{
 	0x06: {c: 8, op: func(c *LR35902) {
 		c.load8(&c.registers.b, c.getImmediate8())
 	}},
-	// RLCA
+	// RLCA: rotate A left circularly (ignore previous carry)
 	0x07: {c: 4, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, true, true)
+		c.rotate(&c.registers.a, true, false)
 	}},
 	// LD (a16),SP
 	0x08: {c: 20, op: func(c *LR35902) {
@@ -69,9 +69,9 @@ var instructions = map[uint8]instruction{
 	0x0E: {c: 8, op: func(c *LR35902) {
 		c.load8(&c.registers.c, c.getImmediate8())
 	}},
-	// RRCA
+	// RRCA: rotate A right circularly (ignore previous carry)
 	0x0F: {c: 4, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, false, true)
+		c.rotate(&c.registers.a, false, false)
 	}},
 
 	// STOP 0
@@ -103,9 +103,9 @@ var instructions = map[uint8]instruction{
 	0x16: {c: 8, op: func(c *LR35902) {
 		c.load8(&c.registers.d, c.getImmediate8())
 	}},
-	// RLA
+	// RLA: rotate A left through carry (use previous carry)
 	0x17: {c: 4, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, true, false)
+		c.rotate(&c.registers.a, true, true)
 	}},
 	// JR r8
 	0x18: {c: 12, op: func(c *LR35902) {
@@ -136,9 +136,9 @@ var instructions = map[uint8]instruction{
 	0x1E: {c: 8, op: func(c *LR35902) {
 		c.load8(&c.registers.e, c.getImmediate8())
 	}},
-	// RRA
+	// RRA: rotate A right through carry (use previous carry)
 	0x1F: {c: 4, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, false, false)
+		c.rotate(&c.registers.a, false, true)
 	}},
 
 	// JR NZ,r8
