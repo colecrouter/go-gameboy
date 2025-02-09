@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
@@ -20,12 +19,10 @@ func TestPPU(t *testing.T) {
 	vramModule := &vram.VRAM{}
 	oamModule := &memory.OAM{}
 	regs := &registers.Registers{}
-	display := &lcd.Display{}
-
 	// Set the palette to a simple 4-color palette
 	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
 
-	ppuUnit := NewPPU(vramModule, oamModule, display, regs)
+	ppuUnit := NewPPU(vramModule, oamModule, regs)
 
 	ppuUnit.registers.LCDControl.Use8000Method = true
 
@@ -41,16 +38,16 @@ func TestPPU(t *testing.T) {
 
 	// Clock the PPU enough times to build a frame
 	for i := 0; i < 10000; i++ {
-		ppuUnit.Clock()
+		ppuUnit.SystemClock()
 	}
 
-	scanline := ppuUnit.getScanline()
+	ppuUnit.DisplayClock()
+	scanline := ppuUnit.image.Pix[:16]
 
 	expected := []uint8{0, 1, 1, 1, 3, 1, 3, 0, 0, 1, 1, 1, 3, 1, 3, 0}
-	result := scanline[:16]
 
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Expected scanline\n\t%v\n—got\n\t%v", expected, result)
+	if !reflect.DeepEqual(scanline, expected) {
+		t.Errorf("Expected scanline\n\t%v\n—got\n\t%v", expected, scanline)
 	}
 
 	// Small pause to allow the display to update

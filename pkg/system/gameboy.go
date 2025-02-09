@@ -1,10 +1,8 @@
 package system
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
@@ -14,24 +12,23 @@ import (
 )
 
 const CLOCK_SPEED = 4_194_304 // 4.194304 MHz
-const CLOCK_DELAY = time.Second / CLOCK_SPEED
-const DISPLAY_SPEED = 60 // 60 Hz
+const DISPLAY_SPEED = 60
+
+// const SPEED_MONITORING_FREQUENCY = 10
+
 // https://gbdev.io/pandocs/Rendering.html
-const DISPLAY_DELAY = time.Duration((float32(time.Second) * 1.0045) / DISPLAY_SPEED)
+const FRAME_DURATION = time.Duration((float32(time.Second) * 1.0045) / DISPLAY_SPEED)
+const TARGET_CYCLES_PER_FRAME = CLOCK_SPEED / DISPLAY_SPEED
 
 type GameBoy struct {
-	Display *lcd.Display
-	Bus     *memory.Bus
-	IO      *registers.Registers
-	CPU     *lr35902.LR35902
-	PPU     *ppu.PPU
-	VRAM    *vram.VRAM
+	Bus  *memory.Bus
+	IO   *registers.Registers
+	CPU  *lr35902.LR35902
+	PPU  *ppu.PPU
+	VRAM *vram.VRAM
 
-	cpuTicker     *time.Ticker
-	ppuTicker     *time.Ticker
-	displayTicker *time.Ticker
-	done          chan struct{}
-	totalCycles   int64 // added to track CPU cycles
+	done        chan struct{}
+	totalCycles int64 // added to track CPU cycles
 }
 
 func NewGameBoy() *GameBoy {
@@ -42,9 +39,6 @@ func NewGameBoy() *GameBoy {
 	gb.IO = &registers.Registers{}
 	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO)
 
-	gb.cpuTicker = time.NewTicker(CLOCK_DELAY)
-	gb.ppuTicker = time.NewTicker(CLOCK_DELAY)
-	gb.displayTicker = time.NewTicker(DISPLAY_DELAY)
 	gb.done = make(chan struct{}) // initialize done channel
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
@@ -61,52 +55,41 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
-	gb.Display = lcd.NewDisplay()
-	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.Display, gb.IO)
+	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO)
 
 	return gb
 }
 
 func (gb *GameBoy) Start() {
-	fmt.Println("Starting GameBoy")
-
-	frameDuration := DISPLAY_DELAY   // ~1/60 second
-	targetCycles := CLOCK_SPEED / 60 // cycles per frame
 	for {
+		frameStart := time.Now()
+
 		select {
 		case <-gb.done:
 			return
 		default:
-			frameStart := time.Now()
-			frameCycles := 0
-			// Execute CPU instructions until reaching target cycles for this frame.
-			for frameCycles < targetCycles {
-				cycles := gb.CPU.Step()
-				frameCycles += cycles
-				gb.totalCycles += int64(cycles)
-				for i := 0; i < cycles; i++ {
-					gb.PPU.Clock()
+			cycles := 0
+			for cycles < TARGET_CYCLES_PER_FRAME {
+				stepCycles := gb.CPU.Step()
+				gb.totalCycles += int64(stepCycles)
+				cycles += stepCycles / 2
+				// Run the PPU clock for each CPU cycle executed.
+				for i := 0; i < stepCycles; i++ {
+					gb.PPU.SystemClock()
 				}
 			}
+		}
 
-			// Update the display
-			gb.Display.Clock()
-			// Sleep for the remainder of the frame, if any.
-			elapsed := time.Since(frameStart)
-			if remainder := frameDuration - elapsed; remainder > 0 {
-				time.Sleep(remainder)
-			}
+		// Check how long the frame took to process.
+		frameElapsed := time.Since(frameStart)
+		if frameElapsed < FRAME_DURATION {
+			time.Sleep(FRAME_DURATION - frameElapsed)
 		}
 	}
-	// }
 }
 
 func (gb *GameBoy) Stop() {
 	gb.done <- struct{}{}
-
-	gb.cpuTicker.Stop()
-	gb.ppuTicker.Stop()
-	gb.displayTicker.Stop()
 }
 
 func (gb *GameBoy) InsertCartridge(rom *gamepak.GamePak) {

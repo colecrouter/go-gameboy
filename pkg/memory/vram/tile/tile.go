@@ -10,23 +10,20 @@ const TILE_SIZE = 8
 
 type Tile struct {
 	initialized bool
-	Bytes       [16]uint8
-	Pixels      [TILE_SIZE][TILE_SIZE]uint8
-}
-
-func (t *Tile) readPixel(row, col uint8) uint8 {
-	msb := (t.Bytes[row*2] >> (7 - col)) & 1
-	lsb := (t.Bytes[row*2+1] >> (7 - col)) & 1
-
-	return msb | (lsb << 1)
+	Pixels      [TILE_SIZE * TILE_SIZE]uint8
 }
 
 func FromBytes(bytes [16]uint8) *Tile {
-	t := &Tile{Bytes: bytes, initialized: true}
+	t := &Tile{initialized: true}
 
-	for row := uint8(0); row < TILE_SIZE; row++ {
-		for col := uint8(0); col < TILE_SIZE; col++ {
-			t.Pixels[row][col] = t.readPixel(row, col)
+	// Iterate per row
+	// Each pair of bytes represents a row of 8 pixels
+	for i := uint8(0); i < TILE_SIZE; i++ {
+		// Iterate per column
+		for j := uint8(0); j < TILE_SIZE; j++ {
+			msb := (bytes[i*2] >> (7 - j)) & 1
+			lsb := (bytes[i*2+1] >> (7 - j)) & 1
+			t.Pixels[i*TILE_SIZE+j] = msb | (lsb << 1)
 		}
 	}
 
@@ -36,11 +33,7 @@ func FromBytes(bytes [16]uint8) *Tile {
 func (t *Tile) Image() *image.Paletted {
 	img := image.NewPaletted(image.Rect(0, 0, TILE_SIZE, TILE_SIZE), monochrome.Palette)
 
-	for row := uint8(0); row < TILE_SIZE; row++ {
-		for col := uint8(0); col < TILE_SIZE; col++ {
-			img.Set(int(col), int(row), monochrome.Palette[t.Pixels[row][col]])
-		}
-	}
+	copy(img.Pix[:], t.Pixels[:])
 
 	return img
 }

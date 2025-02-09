@@ -11,18 +11,19 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/display"
 	"github.com/colecrouter/gameboy-go/pkg/display/debug"
 	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/system"
 	"github.com/colecrouter/gameboy-go/pkg/ui/logger"
 	"github.com/colecrouter/gameboy-go/pkg/ui/terminal/utils"
-	"golang.org/x/term"
 )
 
 type Application struct {
-	gb         *system.GameBoy
-	menus      map[rune]display.Display
-	openMenu   rune
-	refresh    *time.Ticker
-	lastOutput string
+	gb          *system.GameBoy
+	menus       map[rune]display.Display
+	mainDisplay display.Display
+	openMenu    rune
+	refresh     *time.Ticker
+	lastOutput  string
 }
 
 // NewApplication creates a new terminal application.
@@ -32,6 +33,7 @@ func NewApplication(gb *system.GameBoy) *Application {
 		'v': debug.NewTileDebug(gb.VRAM, &monochrome.Palette),
 		'l': debug.NewLogMenu(),
 	}
+	app.mainDisplay = lcd.NewDisplay(gb.PPU)
 	app.refresh = time.NewTicker(16 * time.Millisecond)
 
 	return app
@@ -42,8 +44,13 @@ func (a *Application) Run() {
 	go a.gb.Start()
 
 	// Set terminal to raw mode.
-	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	// oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
+	// defer func() {
+	// 	recover()
+	// 	if oldState != nil {
+	// 		term.Restore(int(os.Stdin.Fd()), oldState)
+	// 	}
+	// }()
 
 	// --- NEW: Redirect stdout and stderr to the log menu ---
 	// Cast the log menu from the menus map.
@@ -100,6 +107,8 @@ Loop:
 }
 
 func (a *Application) render() {
+	a.gb.PPU.DisplayClock()
+
 	for _, menu := range a.menus {
 		menu.Clock()
 	}
@@ -107,12 +116,7 @@ func (a *Application) render() {
 	clearScreen := "\033[H\033[2J"
 
 	var screens [][]string
-	if a.gb.Display != nil {
-		screens = append(screens, utils.DrawBox(a.gb.Display, &utils.BoxOptions{Border: utils.BorderSingle}))
-
-		r := a.gb.Display.Image().Bounds()
-		_ = r
-	}
+	screens = append(screens, utils.DrawBox(a.mainDisplay, &utils.BoxOptions{Border: utils.BorderSingle}))
 	if a.openMenu != 0 && a.menus[a.openMenu] != nil {
 		m := a.menus[a.openMenu]
 		screens = append(screens, utils.DrawBox(m, &utils.BoxOptions{Border: utils.BorderDouble}))

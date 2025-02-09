@@ -47,6 +47,7 @@ func (t *TileMenu) Clock() {
 				continue
 			}
 
+			// TODO copy instead
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					t.img.Set(x+tileX*8, y+tileY*8, tileImage.At(x, y))

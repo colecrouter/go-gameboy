@@ -68,13 +68,13 @@ func TestTileRendering(t *testing.T) {
 
 	// Read the tile data back out and compare
 	// By default, everything should be 0, so getting a blankly mapped tile should return the tile at index 0.
-	tile := v.GetMappedTile(0, 0, false, Mode8000)
+	ti := v.GetMappedTile(0, 0, false, Mode8000)
 
 	// Check that the tile data matches the expected data
 	for y, row := range buffer {
 		for x, color := range row {
-			if tile.Pixels[y][x] != color {
-				t.Errorf("Expected %d, got %d", color, tile.Pixels[y][x])
+			if ti.Pixels[y*tile.TILE_SIZE+x] != color {
+				t.Errorf("Expected %d, got %d", color, ti.Pixels[y*tile.TILE_SIZE+x])
 			}
 		}
 	}

@@ -1,18 +1,21 @@
 package ppu
 
 import (
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
+	"image"
+
+	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
+	"github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
 )
 
 type PPU struct {
 	vram             *vram.VRAM
 	oam              *memory.OAM
-	display          *lcd.Display
 	registers        *registers.Registers
 	lineCycleCounter uint16
+	image            *image.Paletted
 }
 
 const (
@@ -32,12 +35,12 @@ const (
 )
 
 // NewPPU creates a new PPU instance
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, display *lcd.Display, registers *registers.Registers) *PPU {
+func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers) *PPU {
 	return &PPU{
 		vram:      vram,
 		oam:       oam,
-		display:   display,
 		registers: registers,
+		image:     image.NewPaletted(image.Rect(0, 0, visibleColumns, visibleLines), monochrome.Palette),
 	}
 }
 
@@ -52,10 +55,15 @@ oam    │ transfer │ hblank
          10 l
 */
 
-// Clock emulates a clock cycle on the PPU
-func (p *PPU) Clock() {
+// SystemClock emulates a clock cycle on the PPU
+func (p *PPU) SystemClock() {
 	// Transitions modes
 	// See above diagram for reference
+
+	if p.registers.LY >= visibleLines {
+		p.registers.LCDStatus.PPUMode = registers.VBlank
+	}
+
 	switch p.lineCycleCounter {
 	case 0:
 		p.registers.LCDStatus.PPUMode = registers.OAMScan
@@ -64,9 +72,6 @@ func (p *PPU) Clock() {
 	case oamScanCycles + pixelTransferCycles:
 		p.registers.LCDStatus.PPUMode = registers.HBlank
 	}
-	if p.registers.LY >= visibleLines {
-		p.registers.LCDStatus.PPUMode = registers.VBlank
-	}
 
 	// Handle mode-specific operations & interrupts
 	switch p.registers.LCDStatus.PPUMode {
@@ -74,8 +79,8 @@ func (p *PPU) Clock() {
 		// p.OAMScan()
 		// Is this necessary? Could be an optimization in the future
 	case registers.Drawing:
-		line := p.getScanline()
-		p.display.DrawScanline(p.registers.LY, line)
+		// Nothing to do here
+		// TODO elaborate
 	case registers.HBlank:
 		// TODO HBlank interrupt
 	case registers.VBlank:
@@ -95,42 +100,69 @@ func (p *PPU) Clock() {
 	}
 }
 
-func (p *PPU) getScanline() []uint8 {
-	var scanline [160]byte
-
+// DisplayClock updates the image produced by the PPU
+func (p *PPU) DisplayClock() {
 	addressingMode := vram.Mode8000
 	if !p.registers.LCDControl.Use8000Method {
 		addressingMode = vram.Mode8800
 	}
 
+	// Reset the image
+	for i := range p.image.Pix {
+		p.image.Pix[i] = 0
+	}
+
 	// Draw background layer
 	bgMapMode := vram.TileMapMode(p.registers.LCDControl.BackgroundUseSecondaryTileMap)
-	for pixelX := uint8(0); pixelX < visibleColumns; pixelX++ {
-		scrolledY := p.registers.LY + p.registers.ScrollY
-		scrolledX := p.registers.ScrollX + pixelX
+	for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
+		pixelY := int(tileY)*tile.TILE_SIZE - int(p.registers.ScrollY)
 
-		tile := p.vram.GetMappedTile(scrolledX, scrolledY, bgMapMode, addressingMode)
-		if tile == nil {
-			continue
+		for tileX := uint8(0); tileX < visibleColumns/tile.TILE_SIZE; tileX++ {
+			pixelX := int(tileX)*tile.TILE_SIZE - int(p.registers.ScrollX)
+			t := p.vram.GetMappedTile(tileY, tileX, bgMapMode, addressingMode)
+
+			// Issue maybe?
+			if t == nil {
+				continue
+			}
+
+			// Apply color palette
+			// Convert to 2D array
+			var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
+			for y := 0; y < tile.TILE_SIZE; y++ {
+				for x := 0; x < tile.TILE_SIZE; x++ {
+					mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
+				}
+			}
+
+			// Draw the tile
+			p.safeDraw(mapped[:], int(pixelY), int(pixelX))
 		}
-
-		// Allow for scrolling within the tile
-		tileColor := tile.Pixels[scrolledY%8][scrolledX%8]
-
-		// Map the color to the display palette
-		mapped := p.matchColorPalette(tileColor)
-
-		// Draw the pixel
-		scanline[pixelX] = mapped
 	}
 
 	// TODO window layer
 
 	// TODO sprite layer
 
-	return scanline[:]
 }
 
-func (p *PPU) matchColorPalette(color uint8) uint8 {
-	return p.registers.PaletteData.Match(color)
+func (p *PPU) Image() image.Image {
+	return p.image
+}
+
+func (p *PPU) safeDraw(pixels [][tile.TILE_SIZE]uint8, y, x int) {
+	// Since we're drawing by row, we can have rows that are partially off the screen
+	// Clip the row so it doesn't exceed the bounds of the image
+	minX := max(0, 0-x)
+	maxX := min(tile.TILE_SIZE, (visibleColumns-x)-1)
+
+	for i, row := range pixels {
+		// Skip drawing if the row is off the screen
+		if y+i < 0 || y+i >= visibleLines {
+			continue
+		}
+
+		// Copy directly to the image buffer
+		copy(p.image.Pix[(y+i)*visibleColumns+x:], row[minX:maxX])
+	}
 }

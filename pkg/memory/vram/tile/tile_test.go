@@ -13,8 +13,8 @@ func TestTileColor(t *testing.T) {
 	tile := tile.FromBytes(lines)
 
 	for i, color := range colors {
-		if tile.Pixels[0][uint8(i)] != color {
-			t.Errorf("Expected %d, got %d", color, tile.Pixels[0][uint8(i)])
+		if tile.Pixels[uint8(i)] != color {
+			t.Errorf("Expected %d, got %d", color, tile.Pixels[uint8(i)])
 		}
 	}
 }

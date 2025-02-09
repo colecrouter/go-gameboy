@@ -4,7 +4,7 @@ import (
 	"image"
 
 	"github.com/colecrouter/gameboy-go/pkg/display"
-	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
+	"github.com/colecrouter/gameboy-go/pkg/processor/ppu"
 )
 
 const WIDTH = 160
@@ -12,9 +12,8 @@ const HEIGHT = 144
 
 type Display struct {
 	initialised bool
-
-	image  *image.Paletted
-	config display.Config
+	ppu         *ppu.PPU
+	config      display.Config
 }
 
 // Clock updates the image on the display
@@ -31,25 +30,16 @@ func (d *Display) Image() image.Image {
 		panic("Display not initialised")
 	}
 
-	return d.image
-}
-
-func (d *Display) DrawScanline(row uint8, line []uint8) {
-	if !d.initialised {
-		panic("Display not initialised")
-	}
-
-	offset := int(row) * d.image.Stride
-	copy(d.image.Pix[offset:offset+WIDTH], line)
+	return d.ppu.Image()
 }
 
 func (d *Display) Config() *display.Config {
 	return &d.config
 }
 
-func NewDisplay() *Display {
+func NewDisplay(ppu *ppu.PPU) *Display {
 	d := &Display{initialised: true}
-	d.image = image.NewPaletted(image.Rect(0, 0, WIDTH, HEIGHT), monochrome.Palette)
+	d.ppu = ppu
 	d.config = display.Config{Title: "Display"}
 
 	return d

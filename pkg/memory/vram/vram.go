@@ -76,10 +76,8 @@ const (
 	Map1 TileMapMode = true
 )
 
-// GetMappedTile reads a tile from the VRAM at the given pixel coordinates.
-func (v *VRAM) GetMappedTile(x, y uint8, mapMode TileMapMode, addressingMode TileAddressingMode) *tile.Tile {
-	tileX := x / 8
-	tileY := y / 8
+// GetMappedTile reads a tile from the VRAM at the given tile coordinates (pixel coordinates divided by TILE_SIZE).
+func (v *VRAM) GetMappedTile(tileY, tileX uint8, mapMode TileMapMode, addressingMode TileAddressingMode) *tile.Tile {
 	mapIndex := uint16(tileY)*32 + uint16(tileX) // assuming a 32-tile wide tilemap; adjust if needed
 
 	currentMap := &v.tileMap0
