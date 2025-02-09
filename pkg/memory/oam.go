@@ -14,7 +14,7 @@ func (o *OAM) Write(addr uint16, data byte) {
 	o.buffer[addr] = data
 }
 
-func (o *OAM) ReadSprite(index byte) *sprite.Sprite {
+func (o *OAM) ReadSprite(index int) *sprite.Sprite {
 	var arr [4]byte
 	copy(arr[:], o.buffer[index*4:index*4+4])
 	return sprite.NewSprite(arr)

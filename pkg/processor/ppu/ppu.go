@@ -100,7 +100,7 @@ func (p *PPU) SystemClock() {
 	}
 }
 
-// DisplayClock updates the image produced by the PPU
+// Clock updates the image produced by the PPU
 func (p *PPU) DisplayClock() {
 	addressingMode := vram.Mode8000
 	if !p.registers.LCDControl.Use8000Method {
@@ -113,7 +113,7 @@ func (p *PPU) DisplayClock() {
 	}
 
 	// Draw background layer
-	bgMapMode := vram.TileMapMode(p.registers.LCDControl.BackgroundUseSecondaryTileMap)
+	bgMapMode := vram.TileMapMode(p.registers.LCDControl.BackgroundUseSecondTileMap)
 	for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
 		pixelY := int(tileY)*tile.TILE_SIZE - int(p.registers.ScrollY)
 
@@ -140,9 +140,68 @@ func (p *PPU) DisplayClock() {
 		}
 	}
 
-	// TODO window layer
+	// Draw window layer
+	if p.registers.LCDControl.EnableWindow {
+		fgMapMode := vram.TileMapMode(p.registers.LCDControl.WindowUseSecondTileMap)
+		for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
+			pixelY := int(tileY)*tile.TILE_SIZE - int(p.registers.WindowY)
 
-	// TODO sprite layer
+			if pixelY < 0 {
+				continue
+			}
+
+			for tileX := uint8(0); tileX < visibleColumns/tile.TILE_SIZE; tileX++ {
+				pixelX := int(tileX)*tile.TILE_SIZE - int(p.registers.WindowX) + 7
+
+				if pixelX < 0 {
+					continue
+				}
+
+				t := p.vram.GetMappedTile(tileY, tileX, fgMapMode, addressingMode)
+
+				// Issue maybe?
+				if t == nil {
+					continue
+				}
+
+				// Apply color palette
+				// Convert to 2D array
+				var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
+				for y := 0; y < tile.TILE_SIZE; y++ {
+					for x := 0; x < tile.TILE_SIZE; x++ {
+						mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
+					}
+				}
+
+				// Draw the tile
+				p.safeDraw(mapped[:], int(pixelY), int(pixelX))
+			}
+		}
+	}
+
+	// Draw sprite layer
+	spriteHeight := tile.TILE_SIZE
+	if p.registers.LCDControl.Sprites8x16 {
+		spriteHeight = tile.TILE_SIZE * 2
+	}
+	for i := 0; i < 40; i++ {
+		sprite := p.oam.ReadSprite(i)
+
+		// Skip drawing if the sprite is off the screen
+		if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
+			continue
+		}
+
+		for x := 0; x < spriteHeight; x++ {
+			for y := 0; y < tile.TILE_SIZE; y++ {
+				// Get the pixel from the sprite
+				pixel := p.registers.PaletteData.Match(sprite.ReadPixel(uint8(x), uint8(y)))
+
+				// Draw the pixel
+				p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[pixel])
+			}
+		}
+	}
 
 }
 

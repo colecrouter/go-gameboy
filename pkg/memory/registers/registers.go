@@ -1,25 +1,29 @@
 package registers
 
+import "github.com/colecrouter/gameboy-go/pkg/memory"
+
 type Registers struct {
-	JoypadState uint8          // 0x00
-	SerialData  uint16         // 0x01-0x02
-	Timer       uint32         // 0x04-0x07
-	Interrupts  InterruptFlags // 0x0F
-	Audio       uint32         // 0x10-0x26
-	WavePattern uint16         // 0x30-0x3F
-	LCDControl  LCDControl     // 0x40
-	LCDStatus   LCDStatus      // 0x41-0x45
-	ScrollY     uint8          // 0x42
-	ScrollX     uint8          // 0x43
-	LY          uint8          // 0x44
-	LYCompare   uint8          // 0x45
-	// TODO http://www.codeslinger.co.uk/pages/projects/gameboy/dma.html
-	// DMA 0x46
-	PaletteData        Palette // 0x47
-	ObjectPaletteData1 Palette // 0x48
-	ObjectPaletteData2 Palette // 0x49
-	PositionY          uint8   // 0x4A
-	PositionX          uint8   // 0x4B
+	initialized bool
+	oam         *memory.OAM
+
+	JoypadState        uint8          // 0x00
+	SerialData         uint16         // 0x01-0x02
+	Timer              uint32         // 0x04-0x07
+	Interrupts         InterruptFlags // 0x0F
+	Audio              uint32         // 0x10-0x26
+	WavePattern        uint16         // 0x30-0x3F
+	LCDControl         LCDControl     // 0x40
+	LCDStatus          LCDStatus      // 0x41-0x45
+	ScrollY            uint8          // 0x42
+	ScrollX            uint8          // 0x43
+	LY                 uint8          // 0x44
+	LYCompare          uint8          // 0x45
+	DMA                uint8          // 0x46
+	PaletteData        Palette        // 0x47
+	ObjectPaletteData1 Palette        // 0x48
+	ObjectPaletteData2 Palette        // 0x49
+	WindowY            uint8          // 0x4A
+	WindowX            uint8          // 0x4B
 
 	// CGB only
 	// TODO
@@ -49,7 +53,18 @@ $FF68	$FF6B	CGB	BG / OBJ Palettes
 $FF70		CGB	WRAM Bank Select
 */
 
+func NewRegisters(oam *memory.OAM) *Registers {
+	return &Registers{
+		oam:         oam,
+		initialized: true,
+	}
+}
+
 func (r *Registers) Read(addr uint16) uint8 {
+	if !r.initialized {
+		panic("Registers not initialized")
+	}
+
 	addr &= 0xFF
 
 	switch addr {
@@ -82,7 +97,7 @@ func (r *Registers) Read(addr uint16) uint8 {
 	case 0x45:
 		return r.LYCompare
 	case 0x46:
-		panic("DMA not implemented")
+		return r.DMA
 	case 0x47:
 		return r.PaletteData.Read(0)
 	case 0x48:
@@ -90,9 +105,9 @@ func (r *Registers) Read(addr uint16) uint8 {
 	case 0x49:
 		return r.ObjectPaletteData2.Read(0)
 	case 0x4A:
-		return r.PositionY
+		return r.WindowY
 	case 0x4B:
-		return r.PositionX
+		return r.WindowX
 	case 0x50:
 		if r.DisableBootROM {
 			return 1
@@ -123,7 +138,9 @@ func (r *Registers) Read(addr uint16) uint8 {
 }
 
 func (r *Registers) Write(addr uint16, value uint8) {
-	addr &= 0xFF
+	if !r.initialized {
+		panic("Registers not initialized")
+	}
 
 	switch addr {
 	case 0x00:
@@ -155,7 +172,8 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0x45:
 		r.LYCompare = value
 	case 0x46:
-		panic("DMA not implemented")
+		r.DMA = value
+		r.dma(value)
 	case 0x47:
 		r.PaletteData.Write(0, value)
 	case 0x48:
@@ -163,9 +181,9 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0x49:
 		r.ObjectPaletteData2.Write(0, value)
 	case 0x4A:
-		r.PositionY = value
+		r.WindowY = value
 	case 0x4B:
-		r.PositionX = value
+		r.WindowX = value
 	case 0x50:
 		r.DisableBootROM = value > 0
 	case 0x4F:
@@ -184,5 +202,12 @@ func (r *Registers) Write(addr uint16, value uint8) {
 			return
 		}
 		panic("Invalid register address")
+	}
+}
+
+func (r *Registers) dma(addr uint8) {
+	addr = uint8(uint16(addr) << 8) // Source address is * 100
+	for i := 0; i < 0xA0; i++ {
+		r.oam.Write(uint16(i), r.oam.Read(uint16(addr)+uint16(i)))
 	}
 }
