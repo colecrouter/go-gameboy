@@ -17,7 +17,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	game := gamepak.NewGamePak(romData)
-	gb.InsertCartridge(game)
+	gb.CartridgeReader.InsertCartridge(game)
 
 	app := terminal.NewApplication(gb)
 

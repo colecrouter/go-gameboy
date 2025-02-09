@@ -32,15 +32,11 @@ func (c *LR35902) Step() int {
 
 	// Run instruction
 	var instruction instruction
-	var ok bool
 	if c.cb {
-		instruction, ok = cbInstructions[opcode]
+		instruction = cbInstructions[opcode]
 		c.cb = false
 	} else {
-		instruction, ok = instructions[opcode]
-	}
-	if !ok {
-		panic(fmt.Sprintf("Unknown opcode: 0x%X", opcode))
+		instruction = instructions[opcode]
 	}
 
 	var mnemonic string
@@ -100,4 +96,8 @@ func (c *LR35902) PrintRegisters() {
 	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.registers.h, c.registers.l)
 	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.registers.sp, c.registers.pc)
 	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
+}
+
+func (c *LR35902) PC() uint16 {
+	return c.registers.pc
 }

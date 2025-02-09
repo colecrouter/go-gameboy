@@ -1,6 +1,6 @@
 package lr35902
 
-var mnemonics = map[uint8]string{
+var mnemonics = [0x100]string{
 	0x00: "NOP",
 	0x01: "LD BC,d16",
 	0x02: "LD (BC),A",

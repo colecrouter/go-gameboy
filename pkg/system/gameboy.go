@@ -8,7 +8,7 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
 	"github.com/colecrouter/gameboy-go/pkg/processor/cpu/lr35902"
 	"github.com/colecrouter/gameboy-go/pkg/processor/ppu"
-	"github.com/colecrouter/gameboy-go/pkg/reader/gamepak"
+	"github.com/colecrouter/gameboy-go/pkg/reader"
 )
 
 const CLOCK_SPEED = 4_194_304 // 4.194304 MHz
@@ -21,14 +21,16 @@ const FRAME_DURATION = time.Duration((float32(time.Second) * 1.0045) / DISPLAY_S
 const TARGET_CYCLES_PER_FRAME = CLOCK_SPEED / DISPLAY_SPEED
 
 type GameBoy struct {
-	Bus  *memory.Bus
-	IO   *registers.Registers
-	CPU  *lr35902.LR35902
-	PPU  *ppu.PPU
-	VRAM *vram.VRAM
+	Bus             *memory.Bus
+	IO              *registers.Registers
+	CPU             *lr35902.LR35902
+	PPU             *ppu.PPU
+	VRAM            *vram.VRAM
+	CartridgeReader *reader.CartridgeReader
 
 	done        chan struct{}
 	totalCycles int64 // added to track CPU cycles
+	FastMode    bool
 }
 
 func NewGameBoy() *GameBoy {
@@ -38,11 +40,13 @@ func NewGameBoy() *GameBoy {
 	oamModule := &memory.OAM{}
 	gb.IO = &registers.Registers{}
 	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO)
+	gb.CartridgeReader = reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
 	gb.done = make(chan struct{}) // initialize done channel
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
 	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx aka mapper
+	gb.Bus.AddDevice(0x0000, 0x7FFF, gb.CartridgeReader)
 	gb.Bus.AddDevice(0x8000, 0x9FFF, gb.VRAM)                                      // VRAM
 	gb.Bus.AddDevice(0xA000, 0xBFFF, &memory.Memory{Buffer: make([]byte, 0x2000)}) // External RAM
 	gb.Bus.AddDevice(0xC000, 0xCFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
@@ -72,18 +76,22 @@ func (gb *GameBoy) Start() {
 			for cycles < TARGET_CYCLES_PER_FRAME {
 				stepCycles := gb.CPU.Step()
 				gb.totalCycles += int64(stepCycles)
-				cycles += stepCycles / 2
-				// Run the PPU clock for each CPU cycle executed.
+				cycles += stepCycles
 				for i := 0; i < stepCycles; i++ {
 					gb.PPU.SystemClock()
 				}
 			}
 		}
 
-		// Check how long the frame took to process.
-		frameElapsed := time.Since(frameStart)
-		if frameElapsed < FRAME_DURATION {
-			time.Sleep(FRAME_DURATION - frameElapsed)
+		if !gb.FastMode {
+			// Calculate remaining time for the frame.
+			remaining := FRAME_DURATION - time.Since(frameStart)
+			if remaining > 2*time.Millisecond {
+				time.Sleep(remaining - 1*time.Millisecond)
+			}
+			// Busy wait for the final part of the frame.
+			for time.Since(frameStart) < FRAME_DURATION {
+			}
 		}
 	}
 }
@@ -92,6 +100,6 @@ func (gb *GameBoy) Stop() {
 	gb.done <- struct{}{}
 }
 
-func (gb *GameBoy) InsertCartridge(rom *gamepak.GamePak) {
-	gb.Bus.AddDevice(0x0000, 0x7FFF, rom)
+func (gb *GameBoy) PC() uint16 {
+	return gb.CPU.PC()
 }

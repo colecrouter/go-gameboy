@@ -10,8 +10,17 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/reader/gamepak"
 )
 
-func BenchmarkGameBoy_OneSecondClockCycles(b *testing.B) {
-	// Start CPU profiling
+func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
+	f, err := os.ReadFile("../../tetris.gb")
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	game := gamepak.NewGamePak(f)
+	gb := NewGameBoy()
+	gb.FastMode = true
+	gb.CartridgeReader.InsertCartridge(game)
+
 	profFile, err := os.Create("cpu.prof")
 	if err != nil {
 		b.Fatal(err)
@@ -20,23 +29,39 @@ func BenchmarkGameBoy_OneSecondClockCycles(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer func() {
-		pprof.StopCPUProfile()
-		profFile.Close()
-	}()
 
+	b.ResetTimer()
+
+	go gb.Start()
+
+	for {
+		// Wait until CPU passes the boot ROM (PC > 0xFF).
+		if gb.CPU.PC() > 0xFF {
+			gb.Stop()
+			break
+		}
+	}
+	b.Logf("Boot ROM completed. Cycles processed: %d", gb.totalCycles)
+
+	pprof.StopCPUProfile()
+	profFile.Close()
+}
+
+// Renamed existing benchmark to clarify its purpose
+func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	f, err := os.ReadFile("../../tetris.gb")
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
 	game := gamepak.NewGamePak(f)
-	game.Title()
 
 	gb := NewGameBoy()
-	// // Enable fast mode to bypass real-time delays during benchmarking
+	// Don't enable FastMode for this benchmark
 	// gb.fastMode = true
-	gb.InsertCartridge(game)
+	gb.CartridgeReader.InsertCartridge(game)
+
+	b.ResetTimer()
 
 	// run GameBoy in a goroutine so that we can stop it after 1 second
 	go gb.Start()

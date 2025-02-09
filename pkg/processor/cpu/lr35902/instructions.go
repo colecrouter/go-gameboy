@@ -5,7 +5,7 @@ type instruction struct {
 	c  int
 }
 
-var instructions = map[uint8]instruction{
+var instructions = [0x100]instruction{
 	// NOP
 	0x00: {c: 4, op: func(c *LR35902) {}},
 	// LD BC,d16

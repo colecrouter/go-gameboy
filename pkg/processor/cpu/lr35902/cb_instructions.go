@@ -80,8 +80,8 @@ var secondHalfCbInstructionsHelper = [16]instructionGenerator{
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.set(7, u) } },
 }
 
-func generateCbInstructions() map[uint8]instruction {
-	CBInstructions := map[uint8]instruction{}
+func generateCbInstructions() [0x100]instruction {
+	CBInstructions := [0x100]instruction{}
 
 	// Register mapping: indices 0-7 correspond to B, C, D, E, H, L, (HL), A.
 	// nil indicates (HL) which is handled specially.
