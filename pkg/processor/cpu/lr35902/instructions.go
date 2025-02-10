@@ -925,7 +925,7 @@ var instructions = [0x100]instruction{
 	}},
 	// RETI
 	0xD9: {c: 16, op: func(c *LR35902) {
-		c.enableInterrupts()
+		c.ime = true
 		c.ret(true)
 	}},
 	// JP C,a16
@@ -1016,7 +1016,7 @@ var instructions = [0x100]instruction{
 	}},
 	// DI
 	0xF3: {c: 4, op: func(c *LR35902) {
-		c.disableInterrupts()
+		c.ime = false
 	}},
 	// INVALID
 	// PUSH AF
@@ -1047,7 +1047,7 @@ var instructions = [0x100]instruction{
 	}},
 	// EI
 	0xFB: {c: 4, op: func(c *LR35902) {
-		c.enableInterrupts()
+		c.ime = true
 	}},
 	// INVALID
 	// INVALID

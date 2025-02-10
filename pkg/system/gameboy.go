@@ -59,7 +59,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
-	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO)
+	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.CPU)
 
 	return gb
 }
@@ -78,6 +78,9 @@ func (gb *GameBoy) Start() {
 				gb.totalCycles += int64(stepCycles)
 				cycles += stepCycles
 				for i := 0; i < stepCycles; i++ {
+					// Technicially this is an issue, because Timer.Clock() should happen before CPU.Step()
+					gb.IO.Timer.Clock(func() { gb.CPU.ISR(lr35902.TimerISR) })
+
 					gb.PPU.SystemClock()
 				}
 			}

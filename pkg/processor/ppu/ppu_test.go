@@ -9,6 +9,7 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/memory"
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
+	"github.com/colecrouter/gameboy-go/pkg/processor/cpu/lr35902"
 )
 
 // Use a dummy tile that returns a valid color index (e.g. 1) for all pixels.
@@ -21,8 +22,9 @@ func TestPPU(t *testing.T) {
 	regs := &registers.Registers{}
 	// Set the palette to a simple 4-color palette
 	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
+	cpu := lr35902.NewLR35902(&memory.Bus{}, regs)
 
-	ppuUnit := NewPPU(vramModule, oamModule, regs)
+	ppuUnit := NewPPU(vramModule, oamModule, regs, cpu)
 
 	ppuUnit.registers.LCDControl.Use8000Method = true
 

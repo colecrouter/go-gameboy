@@ -8,9 +8,11 @@ import (
 	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
 	"github.com/colecrouter/gameboy-go/pkg/memory/vram/tile"
+	"github.com/colecrouter/gameboy-go/pkg/processor/cpu/lr35902"
 )
 
 type PPU struct {
+	cpu              *lr35902.LR35902
 	vram             *vram.VRAM
 	oam              *memory.OAM
 	registers        *registers.Registers
@@ -35,8 +37,9 @@ const (
 )
 
 // NewPPU creates a new PPU instance
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers) *PPU {
+func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, cpu *lr35902.LR35902) *PPU {
 	return &PPU{
+		cpu:       cpu,
 		vram:      vram,
 		oam:       oam,
 		registers: registers,
@@ -59,35 +62,25 @@ oam    │ transfer │ hblank
 func (p *PPU) SystemClock() {
 	// Transitions modes
 	// See above diagram for reference
-
 	if p.registers.LY >= visibleLines {
 		p.registers.LCDStatus.PPUMode = registers.VBlank
-	}
 
-	switch p.lineCycleCounter {
-	case 0:
-		p.registers.LCDStatus.PPUMode = registers.OAMScan
-	case oamScanCycles:
-		p.registers.LCDStatus.PPUMode = registers.Drawing
-	case oamScanCycles + pixelTransferCycles:
-		p.registers.LCDStatus.PPUMode = registers.HBlank
+		if p.registers.LY == visibleLines {
+			p.cpu.ISR(lr35902.VBlankISR)
+		}
+	} else {
+		switch p.lineCycleCounter {
+		case 0:
+			p.registers.LCDStatus.PPUMode = registers.OAMScan
+			p.cpu.ISR(lr35902.LCDSTATISR)
+		case oamScanCycles:
+			p.registers.LCDStatus.PPUMode = registers.Drawing
+			p.cpu.ISR(lr35902.LCDSTATISR)
+		case oamScanCycles + pixelTransferCycles:
+			p.registers.LCDStatus.PPUMode = registers.HBlank
+			p.cpu.ISR(lr35902.LCDSTATISR)
+		}
 	}
-
-	// Handle mode-specific operations & interrupts
-	switch p.registers.LCDStatus.PPUMode {
-	case registers.OAMScan:
-		// p.OAMScan()
-		// Is this necessary? Could be an optimization in the future
-	case registers.Drawing:
-		// Nothing to do here
-		// TODO elaborate
-	case registers.HBlank:
-		// TODO HBlank interrupt
-	case registers.VBlank:
-		// TODO VBlank interrupt
-	}
-
-	// Update the display
 
 	// Handle counter incrementation
 	p.lineCycleCounter++

@@ -453,20 +453,20 @@ func (c *LR35902) decimalAdjust() {
 }
 
 // Interrupts
-func (c *LR35902) disableInterrupts() {
-	c.io.Interrupts.Joypad = false
-	c.io.Interrupts.Serial = false
-	c.io.Interrupts.Timer = false
-	c.io.Interrupts.LCD = false
-	c.io.Interrupts.VBlank = false
-}
-func (c *LR35902) enableInterrupts() {
-	c.io.Interrupts.Joypad = true
-	c.io.Interrupts.Serial = true
-	c.io.Interrupts.Timer = true
-	c.io.Interrupts.LCD = true
-	c.io.Interrupts.VBlank = true
-}
+// func (c *LR35902) disableInterrupts() {
+// 	c.io.Interrupts.Joypad = false
+// 	c.io.Interrupts.Serial = false
+// 	c.io.Interrupts.Timer = false
+// 	c.io.Interrupts.LCD = false
+// 	c.io.Interrupts.VBlank = false
+// }
+// func (c *LR35902) enableInterrupts() {
+// 	c.io.Interrupts.Joypad = true
+// 	c.io.Interrupts.Serial = true
+// 	c.io.Interrupts.Timer = true
+// 	c.io.Interrupts.LCD = true
+// 	c.io.Interrupts.VBlank = true
+// }
 
 // registerPair returns a 16-bit register pair from two 8-bit registers
 // If you want BC, pass B and C in that order

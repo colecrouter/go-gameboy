@@ -18,6 +18,7 @@ type LR35902 struct {
 	bus   memory.Device
 	io    *registers.Registers
 	cb    bool
+	ime   bool
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -50,6 +51,10 @@ func (c *LR35902) Step() int {
 
 	op := instruction.op
 	cycles := instruction.c
+
+	if c.registers.pc == 0x02a0 {
+		fmt.Println("Breakpoint")
+	}
 
 	op(c)
 
@@ -95,4 +100,75 @@ func (c *LR35902) PrintRegisters() {
 
 func (c *LR35902) PC() uint16 {
 	return c.registers.pc
+}
+
+func (c *LR35902) ISR(isr ISR) {
+	// If master interrupt enable is disabled, return
+	if !c.ime {
+		return
+	}
+
+	// If the interrupt is disabled, return
+	if c.io.InterruptEnable.Read()<<isrOffsets[isr] == 0 {
+		return
+	}
+
+	// STAT interrupt is special
+	if isr == LCDSTATISR {
+		switch c.io.LCDStatus.PPUMode {
+		case registers.HBlank:
+			if !c.io.LCDStatus.Mode0Interrupt {
+				return
+			}
+		case registers.VBlank:
+			if !c.io.LCDStatus.Mode1Interrupt {
+				return
+			}
+		case registers.OAMScan:
+			if !c.io.LCDStatus.Mode2Interrupt {
+				return
+			}
+		case registers.Drawing:
+			if !c.io.LCDStatus.LYCInterrupt {
+				return
+			}
+		}
+	}
+
+	// Push PC onto stack
+	c.registers.sp -= 2
+	c.bus.Write(c.registers.sp, uint8(c.registers.pc>>8))
+	c.bus.Write(c.registers.sp+1, uint8(c.registers.pc))
+
+	// Jump to ISR
+	c.registers.pc = isrAddresses[isr]
+
+	// Disable interrupts
+	c.ime = false
+}
+
+type ISR int
+
+const (
+	VBlankISR ISR = iota
+	LCDSTATISR
+	TimerISR
+	SerialISR
+	JoypadISR
+)
+
+var isrAddresses = [5]uint16{
+	VBlankISR:  0x0040,
+	LCDSTATISR: 0x0048,
+	TimerISR:   0x0050,
+	SerialISR:  0x0058,
+	JoypadISR:  0x0060,
+}
+
+var isrOffsets = [5]uint8{
+	VBlankISR:  0,
+	LCDSTATISR: 1,
+	TimerISR:   2,
+	SerialISR:  3,
+	JoypadISR:  4,
 }

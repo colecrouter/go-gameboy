@@ -13,6 +13,7 @@ func main() {
 	gb := system.NewGameBoy()
 
 	romData, err := os.ReadFile("tetris.gb")
+	// romData, err := os.ReadFile("01-special.gb")
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -1,41 +1,47 @@
 package registers
 
-import "github.com/colecrouter/gameboy-go/pkg/memory"
+import (
+	"github.com/colecrouter/gameboy-go/pkg/memory"
+)
 
 type Registers struct {
 	initialized bool
 	oam         *memory.OAM
 
-	JoypadState        uint8          // 0x00
-	SerialData         uint16         // 0x01-0x02
-	Timer              uint32         // 0x04-0x07
-	Interrupts         InterruptFlags // 0x0F
-	Audio              uint32         // 0x10-0x26
-	WavePattern        uint16         // 0x30-0x3F
-	LCDControl         LCDControl     // 0x40
-	LCDStatus          LCDStatus      // 0x41-0x45
-	ScrollY            uint8          // 0x42
-	ScrollX            uint8          // 0x43
-	LY                 uint8          // 0x44
-	LYCompare          uint8          // 0x45
-	DMA                uint8          // 0x46
-	PaletteData        Palette        // 0x47
-	ObjectPaletteData1 Palette        // 0x48
-	ObjectPaletteData2 Palette        // 0x49
-	WindowY            uint8          // 0x4A
-	WindowX            uint8          // 0x4B
+	JoypadState        uint8          // 0xFF00
+	SerialData         uint16         // 0xFF01-0xFF02
+	Timer              Timer          // 0xFF04-0xFF07
+	Interrupts         InterruptFlags // 0xFF0F
+	Audio              uint32         // 0xFF10-0xFF26
+	WavePattern        uint16         // 0xFF30-0xFF3F
+	LCDControl         LCDControl     // 0xFF40
+	LCDStatus          LCDStatus      // 0xFF41-0xFF45
+	ScrollY            uint8          // 0xFF42
+	ScrollX            uint8          // 0xFF43
+	LY                 uint8          // 0xFF44
+	LYCompare          uint8          // 0xFF45
+	DMA                uint8          // 0xFF46
+	PaletteData        Palette        // 0xFF47
+	ObjectPaletteData1 Palette        // 0xFF48
+	ObjectPaletteData2 Palette        // 0xFF49
+	WindowY            uint8          // 0xFF4A
+	WindowX            uint8          // 0xFF4B
 
 	// CGB only
 	// TODO
-	VRAMBank1      bool     // 0x4F
-	DisableBootROM bool     // 0x50
-	VRAMDMA        [4]uint8 // 0x51-0x55
-	WRAMBank       uint8    // 0x70
-	GBCPaletteData [8]uint8 // 0x68-0x6B
-	WRAMBank1      bool     // 0x70
+	VRAMBank1      bool     // 0xFF4F
+	DisableBootROM bool     // 0xFF50
+	VRAMDMA        [5]uint8 // 0xFF51-0xFF55
+	WRAMBank       uint8    // 0xFF70
+	GBCPaletteData [8]uint8 // 0xFF68-0xFF6B
+	WRAMBank1      bool     // 0xFF70
+
+	// Interrupts
+	InterruptRequest Interrupt // 0xFFF0
+	InterruptEnable  Interrupt // 0xFFFF
 
 	// ???
-	rest [0xFF - 0x71]uint8 // 0x71-0xFF
+	rest [0x8A]uint8
 }
 
 /*
@@ -65,17 +71,14 @@ func (r *Registers) Read(addr uint16) uint8 {
 		panic("Registers not initialized")
 	}
 
-	addr &= 0xFF
-
 	switch addr {
 	case 0x00:
 		return r.JoypadState
 	case 0x01, 0x02:
-		offset := addr - 0x01
-		return uint8(r.SerialData >> (8 * offset))
+		return 0
 	case 0x04, 0x05, 0x06, 0x07:
 		offset := addr - 0x04
-		return uint8(r.Timer >> (8 * offset))
+		return r.Timer.Read(offset)
 	case 0x0F:
 		return r.Interrupts.Read(addr)
 	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26:
@@ -129,12 +132,13 @@ func (r *Registers) Read(addr uint16) uint8 {
 			return 1
 		}
 		return 0
+	case 0xF0:
+		return r.InterruptRequest.Read()
+	case 0xFF:
+		return r.InterruptEnable.Read()
 	default:
-		if addr >= 0x71 && addr <= 0xFF {
-			return r.rest[addr-0x71]
-		}
+		return 0
 	}
-	panic("Invalid register address")
 }
 
 func (r *Registers) Write(addr uint16, value uint8) {
@@ -150,7 +154,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.SerialData = uint16(value) << (8 * offset)
 	case 0x04, 0x05, 0x06, 0x07:
 		offset := addr - 0x04
-		r.Timer = r.Timer | (uint32(value) << (8 * offset))
+		r.Timer.Write(offset, value)
 	case 0x0F:
 		r.Interrupts.Write(0, value)
 	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26:
@@ -196,6 +200,10 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.VRAMDMA[offset] = value
 	case 0x70:
 		r.WRAMBank1 = value > 0
+	case 0xF0:
+		r.InterruptRequest.Write(value)
+	case 0xFF:
+		r.InterruptEnable.Write(value)
 	default:
 		if addr >= 0x71 && addr <= 0xFF {
 			r.rest[addr-0x71] = value
