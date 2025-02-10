@@ -43,7 +43,7 @@ func TestPPU(t *testing.T) {
 
 	scanline := ppuUnit.image.Pix[:16]
 
-	expected := []uint8{0, 1, 1, 1, 3, 1, 3, 0, 0, 1, 1, 1, 3, 1, 3, 0}
+	expected := []uint8{0, 2, 3, 3, 3, 3, 2, 0, 0, 2, 3, 3, 3, 3, 2, 0}
 
 	if !reflect.DeepEqual(scanline, expected) {
 		t.Errorf("Expected scanline\n\t%v\n—got\n\t%v", expected, scanline)

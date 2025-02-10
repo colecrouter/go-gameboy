@@ -197,6 +197,13 @@ func (p *PPU) DisplayClock() {
 				// Get the pixel from the sprite
 				pixel := p.registers.PaletteData.Match(sprite.ReadPixel(uint8(x), uint8(y)))
 
+				matched := p.registers.PaletteData.Match(sprite.ReadPixel(uint8(x), uint8(y)))
+
+				// Skip drawing if the pixel is transparent
+				if matched == 0 {
+					continue
+				}
+
 				// Draw the pixel
 				p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[pixel])
 			}
