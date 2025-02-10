@@ -41,8 +41,8 @@ func (b *Bus) Write(addr uint16, data byte) {
 	}
 }
 
-// PrintMemory prints the contents of the memory bus within the specified address range.
-func PrintMemory(d Device, start, end uint16) {
+// Print prints the contents of the memory bus within the specified address range.
+func Print(d Device, start, end uint16) {
 	if start > end {
 		panic("Start address must be less than or equal to end address")
 	}

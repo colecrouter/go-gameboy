@@ -56,11 +56,6 @@ func (c *LR35902) Step() int {
 	// Increment PC
 	c.registers.pc++
 
-	if c.registers.pc == 0xf9 {
-		a := c.bus.Read(toRegisterPair(c.registers.h, c.registers.l))
-		_ = a
-	}
-
 	return cycles
 }
 

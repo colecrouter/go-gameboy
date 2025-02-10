@@ -36,12 +36,11 @@ func TestPPU(t *testing.T) {
 		vramModule.Write(0x1800+uint16(i), 0)
 	}
 
-	// Clock the PPU enough times to build a frame
-	for i := 0; i < 10000; i++ {
-		ppuUnit.SystemClock()
-	}
-
 	ppuUnit.DisplayClock()
+
+	// Uncomment to print the rendered image to the console
+	// fmt.Println(renderer.RenderANSI(ppuUnit.image))
+
 	scanline := ppuUnit.image.Pix[:16]
 
 	expected := []uint8{0, 1, 1, 1, 3, 1, 3, 0, 0, 1, 1, 1, 3, 1, 3, 0}

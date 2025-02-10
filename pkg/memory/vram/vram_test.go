@@ -81,9 +81,9 @@ func TestTileRendering(t *testing.T) {
 
 	if t.Failed() {
 		/// Print tile data
-		memory.PrintMemory(v, 0x0, 0x1F)
+		memory.Print(v, 0x0, 0x1F)
 
 		// Print tile map data
-		memory.PrintMemory(v, 0x1800, 0x181F)
+		memory.Print(v, 0x1800, 0x181F)
 	}
 }
