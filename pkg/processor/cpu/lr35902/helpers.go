@@ -9,18 +9,15 @@ func (c *LR35902) load8(r *uint8, val uint8) {
 	*r = val
 }
 func (c *LR35902) load16(high, low *uint8, val uint16) {
-	*high = uint8(val >> 8)
-	*low = uint8(val)
+	*high, *low = fromRegisterPair(val)
 }
 func (c *LR35902) pop16(high, low *uint8) {
-	*low = c.bus.Read(c.registers.sp)
-	*high = c.bus.Read(c.registers.sp + 1)
+	*high, *low = c.bus.Read16(c.registers.sp)
 	c.registers.sp += 2
 }
 func (c *LR35902) push16(high, low uint8) {
 	c.registers.sp -= 2
-	c.bus.Write(c.registers.sp, low)
-	c.bus.Write(c.registers.sp+1, high)
+	c.bus.Write16(c.registers.sp, toRegisterPair(high, low))
 }
 func (c *LR35902) load8Mem(r uint8, addr uint16) {
 	// For LDH (n), A
@@ -90,7 +87,8 @@ func (c *LR35902) sub8(r *uint8, val uint8) {
 		carry = Set
 	}
 
-	if (*r&0xf)-(val&0xf) < 0 {
+	// Fix half-carry: set if lower nibble of *r is less than lower nibble of val.
+	if (*r & 0xF) < (val & 0xF) {
 		hc = Set
 	}
 
@@ -158,6 +156,7 @@ func (c *LR35902) subc8(r *uint8, val uint8) {
 	carry := Reset
 	hc := Reset
 
+	// Adjust val if carry flag is set
 	if c.flags.Carry {
 		val++
 	}
@@ -167,7 +166,8 @@ func (c *LR35902) subc8(r *uint8, val uint8) {
 		carry = Set
 	}
 
-	if (*r&0xf)-(val&0xf) < 0 {
+	// Fix half-carry: set if lower nibble of *r is less than lower nibble of val.
+	if (*r & 0xF) < (val & 0xF) {
 		hc = Set
 	}
 
@@ -182,19 +182,17 @@ func (c *LR35902) subc8(r *uint8, val uint8) {
 
 // Register manipulation
 func (c *LR35902) inc8(r *uint8) {
+	old := *r
+	*r++
 	zero := Reset
 	hc := Reset
-
-	*r++
-
-	if *r&0x10 == 0x10 {
+	// Half-carry set when lower nibble overflows (0xF -> 0x0)
+	if old&0xF == 0xF {
 		hc = Set
 	}
-
 	if *r == 0 {
-		zero = 1
+		zero = Set
 	}
-
 	c.setFlags(zero, Reset, hc, Leave)
 }
 func (c *LR35902) inc16(high, low *uint8) {
@@ -203,18 +201,17 @@ func (c *LR35902) inc16(high, low *uint8) {
 	*high, *low = fromRegisterPair(combined)
 }
 func (c *LR35902) dec8(r *uint8) {
+	old := *r
 	*r--
-
+	zero := Reset
 	hc := Reset
-	if *r&0x10 == 0x10 {
+	// Half-carry set when lower nibble underflows (0x0 -> 0xF)
+	if old&0xF == 0x0 {
 		hc = Set
 	}
-
-	zero := Reset
 	if *r == 0 {
 		zero = Set
 	}
-
 	c.setFlags(zero, Set, hc, Leave)
 }
 func (c *LR35902) dec16(high, low *uint8) {
@@ -223,12 +220,13 @@ func (c *LR35902) dec16(high, low *uint8) {
 	*high, *low = fromRegisterPair(combined)
 }
 func (c *LR35902) rst(addr uint16) {
-	retAddr := c.registers.pc + 1 // +1 because the PC is incremented after the instruction is fetched
+	// For RST, instruction size is 1 byte.
+	retAddr := c.registers.pc + 1
+
 	c.registers.sp -= 2
-	// Push low byte first then high byte
-	c.bus.Write(c.registers.sp, uint8(retAddr))
-	c.bus.Write(c.registers.sp+1, uint8(retAddr>>8))
-	c.registers.pc = addr - 1 // -1 because the PC is incremented after the instruction is fetched
+	c.bus.Write16(c.registers.sp, retAddr)
+
+	c.registers.pc = addr - 1
 }
 
 /*
@@ -302,7 +300,7 @@ func (c *LR35902) jump(addr uint16, condition bool) {
 }
 func (c *LR35902) jumpRelative(offset int8, condition bool) {
 	if condition {
-		c.registers.pc += uint16(offset)
+		c.registers.pc = uint16(int32(c.registers.pc) + int32(offset))
 	}
 }
 
@@ -314,8 +312,7 @@ func (c *LR35902) getImmediate8() uint8 {
 }
 
 func (c *LR35902) getImmediate16() uint16 {
-	low := c.bus.Read(c.registers.pc + 1)
-	high := c.bus.Read(c.registers.pc + 2)
+	high, low := c.bus.Read16(c.registers.pc + 1)
 	c.registers.pc += 2
 	return toRegisterPair(high, low)
 }
@@ -372,30 +369,26 @@ func (c *LR35902) ret(condition bool) {
 		return
 	}
 
-	// Pop the address from the stack: high byte first, then low byte
-	high := c.bus.Read(c.registers.sp)
-	low := c.bus.Read(c.registers.sp + 1)
+	// Pop the address from the stack in little endian order: low byte then high byte.
+	high, low := c.bus.Read16(c.registers.sp)
 	c.registers.sp += 2
 
-	// Subtract 1 so that after the clock cycle increments PC, it equals the intended return address
-	c.registers.pc = (uint16(high)<<8 | uint16(low)) - 1
+	addr := toRegisterPair(high, low)
+
+	c.registers.pc = addr - 1
 }
+
 func (c *LR35902) call(addr uint16, condition bool) {
 	if !condition {
 		return
 	}
 
-	// Calculate return address
 	retAddr := c.registers.pc + 1
 
-	// Decrement SP by 2 to make room for the return address (2 bytes)
+	// Decrement SP by 2 and push return address using Write16.
 	c.registers.sp -= 2
+	c.bus.Write16(c.registers.sp, retAddr)
 
-	// Push high byte then low byte of return address
-	c.bus.Write(c.registers.sp, uint8(retAddr>>8))
-	c.bus.Write(c.registers.sp+1, uint8(retAddr))
-
-	// Adjust target address: subtract 1 to account for PC auto-increment
 	c.registers.pc = addr - 1
 }
 
@@ -451,22 +444,6 @@ func (c *LR35902) decimalAdjust() {
 		c.flags.Zero = false
 	}
 }
-
-// Interrupts
-// func (c *LR35902) disableInterrupts() {
-// 	c.io.Interrupts.Joypad = false
-// 	c.io.Interrupts.Serial = false
-// 	c.io.Interrupts.Timer = false
-// 	c.io.Interrupts.LCD = false
-// 	c.io.Interrupts.VBlank = false
-// }
-// func (c *LR35902) enableInterrupts() {
-// 	c.io.Interrupts.Joypad = true
-// 	c.io.Interrupts.Serial = true
-// 	c.io.Interrupts.Timer = true
-// 	c.io.Interrupts.LCD = true
-// 	c.io.Interrupts.VBlank = true
-// }
 
 // registerPair returns a 16-bit register pair from two 8-bit registers
 // If you want BC, pass B and C in that order

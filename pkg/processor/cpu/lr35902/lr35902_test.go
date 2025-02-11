@@ -307,8 +307,8 @@ func TestInstructions(t *testing.T) {
 			cpu.Step()
 			assert.Equal(t, uint16(0x1234), cpu.registers.pc, "CALL should jump to target address")
 			assert.Equal(t, uint16(0xFFFC), cpu.registers.sp, "CALL should push return address onto stack")
-			retHigh := bus.Read(cpu.registers.sp)
-			retLow := bus.Read(cpu.registers.sp + 1)
+			retLow := bus.Read(cpu.registers.sp)
+			retHigh := bus.Read(cpu.registers.sp + 1)
 			expectedRet := initPC + 3
 			actualRet := toRegisterPair(retHigh, retLow)
 			assert.Equal(t, expectedRet, actualRet, "CALL should push correct return address")
@@ -317,8 +317,8 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: RET", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xC9)
 			cpu.registers.sp = 0xFFFC
-			bus.Write(cpu.registers.sp, 0x45)
-			bus.Write(cpu.registers.sp+1, 0x67)
+			bus.Write(cpu.registers.sp, 0x67)
+			bus.Write(cpu.registers.sp+1, 0x45)
 			cpu.Step()
 			assert.Equal(t, uint16(0x4567), cpu.registers.pc, "RET should set PC to return address")
 			assert.Equal(t, uint16(0xFFFE), cpu.registers.sp, "RET should pop return address from stack")

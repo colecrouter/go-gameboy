@@ -1,12 +1,16 @@
 package registers
 
 import (
+	"fmt"
+
 	"github.com/colecrouter/gameboy-go/pkg/memory"
+	"github.com/colecrouter/gameboy-go/pkg/reader"
 )
 
 type Registers struct {
 	initialized bool
 	oam         *memory.OAM
+	cartridge   *reader.CartridgeReader
 
 	JoypadState        uint8          // 0xFF00
 	SerialData         uint16         // 0xFF01-0xFF02
@@ -59,9 +63,10 @@ $FF68	$FF6B	CGB	BG / OBJ Palettes
 $FF70		CGB	WRAM Bank Select
 */
 
-func NewRegisters(oam *memory.OAM) *Registers {
+func NewRegisters(oam *memory.OAM, cartridge *reader.CartridgeReader) *Registers {
 	return &Registers{
 		oam:         oam,
+		cartridge:   cartridge,
 		initialized: true,
 	}
 }
@@ -176,7 +181,6 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0x45:
 		r.LYCompare = value
 	case 0x46:
-		r.DMA = value
 		r.dma(value)
 	case 0x47:
 		r.PaletteData.Write(0, value)
@@ -214,8 +218,10 @@ func (r *Registers) Write(addr uint16, value uint8) {
 }
 
 func (r *Registers) dma(addr uint8) {
-	addr = uint8(uint16(addr) << 8) // Source address is * 100
+	fmt.Printf("DMA transfer from 0x%02X00\n", addr)
+	source := uint16(addr) << 8 // Source address is * 100
 	for i := 0; i < 0xA0; i++ {
-		r.oam.Write(uint16(i), r.oam.Read(uint16(addr)+uint16(i)))
+		// Add 0x4000 to cancel the bus’ subtraction.
+		r.oam.Write(uint16(i), r.cartridge.Read(source+0x4000+uint16(i)))
 	}
 }

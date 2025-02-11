@@ -25,7 +25,11 @@ func (cr *CartridgeReader) Cartridge() *gamepak.GamePak {
 }
 
 func (cr *CartridgeReader) Read(addr uint16) uint8 {
-	if (cr.disableBootRom != nil || !*cr.disableBootRom) && addr < 0x100 {
+	if cr.disableBootRom == nil {
+		panic("Boot ROM disable flag not set")
+	}
+
+	if (!*cr.disableBootRom) && addr < 0x100 {
 		return bootroms.DMG_BOOT[addr]
 	}
 	return cr.cartridge.Read(addr)

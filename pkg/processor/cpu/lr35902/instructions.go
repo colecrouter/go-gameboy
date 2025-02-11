@@ -838,7 +838,7 @@ var instructions = [0x100]instruction{
 	0xC2: {c: 12, op: func(c *LR35902) {
 		c.jump(c.getImmediate16(), !c.flags.Zero)
 	}},
-	// JP a16
+	// JP a16: Read 16-bit little-endian address and set PC.
 	0xC3: {c: 16, op: func(c *LR35902) {
 		c.jump(c.getImmediate16(), true)
 	}},
@@ -862,7 +862,7 @@ var instructions = [0x100]instruction{
 	0xC8: {c: 8, op: func(c *LR35902) {
 		c.ret(c.flags.Zero)
 	}},
-	// RET
+	// RET: Pop a 16-bit address (low byte first) from the stack and set PC.
 	0xC9: {c: 16, op: func(c *LR35902) {
 		c.ret(true)
 	}},
@@ -878,7 +878,7 @@ var instructions = [0x100]instruction{
 	0xCC: {c: 12, op: func(c *LR35902) {
 		c.call(c.getImmediate16(), c.flags.Zero)
 	}},
-	// CALL a16
+	// CALL a16: Push return address (PC+3) in little-endian order then jump.
 	0xCD: {c: 24, op: func(c *LR35902) {
 		c.call(c.getImmediate16(), true)
 	}},

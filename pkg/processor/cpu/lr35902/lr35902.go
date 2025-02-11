@@ -15,7 +15,7 @@ type LR35902 struct {
 		sp, pc              uint16
 	}
 	flags Flags
-	bus   memory.Device
+	bus   *memory.Bus
 	io    *registers.Registers
 	cb    bool
 	ime   bool
@@ -52,11 +52,11 @@ func (c *LR35902) Step() int {
 	op := instruction.op
 	cycles := instruction.c
 
-	if c.registers.pc == 0x02a0 {
-		fmt.Println("Breakpoint")
+	if op == nil {
+		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
+	} else {
+		op(c)
 	}
-
-	op(c)
 
 	// Increment PC
 	c.registers.pc++
@@ -109,7 +109,7 @@ func (c *LR35902) ISR(isr ISR) {
 	}
 
 	// If the interrupt is disabled, return
-	if c.io.InterruptEnable.Read()<<isrOffsets[isr] == 0 {
+	if c.io.InterruptEnable.Read()&(1<<isrOffsets[isr]) == 0 {
 		return
 	}
 
