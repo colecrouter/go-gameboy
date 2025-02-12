@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/colecrouter/gameboy-go/pkg/reader/gamepak"
 	"github.com/colecrouter/gameboy-go/pkg/system"
-	"github.com/colecrouter/gameboy-go/pkg/ui/terminal"
+	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
+	"github.com/colecrouter/gameboy-go/private/ui/terminal"
 )
 
 func main() {

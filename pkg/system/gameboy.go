@@ -3,12 +3,13 @@ package system
 import (
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/memory"
-	"github.com/colecrouter/gameboy-go/pkg/memory/registers"
-	"github.com/colecrouter/gameboy-go/pkg/memory/vram"
-	"github.com/colecrouter/gameboy-go/pkg/processor/cpu/lr35902"
-	"github.com/colecrouter/gameboy-go/pkg/processor/ppu"
-	"github.com/colecrouter/gameboy-go/pkg/reader"
+	"github.com/colecrouter/gameboy-go/private/memory"
+	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/vram"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/lr35902"
+	"github.com/colecrouter/gameboy-go/private/processor/ppu"
+	"github.com/colecrouter/gameboy-go/private/reader"
+	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
 )
 
 const CLOCK_SPEED = 4_194_304 // 4.194304 MHz
@@ -105,4 +106,8 @@ func (gb *GameBoy) Stop() {
 
 func (gb *GameBoy) PC() uint16 {
 	return gb.CPU.PC()
+}
+
+func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {
+	gb.CartridgeReader.InsertCartridge(game)
 }

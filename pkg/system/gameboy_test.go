@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/colecrouter/gameboy-go/pkg/reader/gamepak"
+	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
 )
 
 func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
