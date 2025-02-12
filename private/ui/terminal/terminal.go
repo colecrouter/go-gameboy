@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/colecrouter/gameboy-go/pkg/display/debug/reginfo"
 	"github.com/colecrouter/gameboy-go/pkg/system"
 	"github.com/colecrouter/gameboy-go/private/display"
 	"github.com/colecrouter/gameboy-go/private/display/debug/logs"
@@ -35,6 +36,7 @@ func NewApplication(gb *system.GameBoy) *Application {
 		'v': tiles.NewTileDebug(gb.VRAM, &monochrome.Palette),
 		'l': logs.NewLogMenu(),
 		'm': tilemap.NewTilemapDebug(gb.VRAM, &monochrome.Palette),
+		'r': reginfo.NewLogMenu(gb.IO),
 	}
 	app.mainDisplay = lcd.NewDisplay(gb.PPU)
 	app.refresh = time.NewTicker(16 * time.Millisecond)
