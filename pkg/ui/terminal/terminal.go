@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/colecrouter/gameboy-go/pkg/display"
-	"github.com/colecrouter/gameboy-go/pkg/display/debug"
+	"github.com/colecrouter/gameboy-go/pkg/display/debug/logs"
+	"github.com/colecrouter/gameboy-go/pkg/display/debug/tilemap"
+	"github.com/colecrouter/gameboy-go/pkg/display/debug/tiles"
 	"github.com/colecrouter/gameboy-go/pkg/display/monochrome"
 	"github.com/colecrouter/gameboy-go/pkg/display/monochrome/lcd"
 	"github.com/colecrouter/gameboy-go/pkg/system"
@@ -30,8 +32,9 @@ type Application struct {
 func NewApplication(gb *system.GameBoy) *Application {
 	app := &Application{gb: gb}
 	app.menus = map[rune]display.Display{
-		'v': debug.NewTileDebug(gb.VRAM, &monochrome.Palette),
-		'l': debug.NewLogMenu(),
+		'v': tiles.NewTileDebug(gb.VRAM, &monochrome.Palette),
+		'l': logs.NewLogMenu(),
+		'm': tilemap.NewTilemapDebug(gb.VRAM, &monochrome.Palette),
 	}
 	app.mainDisplay = lcd.NewDisplay(gb.PPU)
 	app.refresh = time.NewTicker(16 * time.Millisecond)
@@ -54,7 +57,7 @@ func (a *Application) Run() {
 
 	// --- NEW: Redirect stdout and stderr to the log menu ---
 	// Cast the log menu from the menus map.
-	if logMenu, ok := a.menus['l'].(*debug.LogMenu); ok {
+	if logMenu, ok := a.menus['l'].(*logs.LogMenu); ok {
 		logger.RedirectOutput(logMenu)
 	}
 

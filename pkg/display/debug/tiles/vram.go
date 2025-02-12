@@ -1,4 +1,4 @@
-package debug
+package tiles
 
 import (
 	"image"

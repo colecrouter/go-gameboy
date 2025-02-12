@@ -6,14 +6,14 @@ import (
 	"os"
 	"sync"
 
-	"github.com/colecrouter/gameboy-go/pkg/display/debug"
+	"github.com/colecrouter/gameboy-go/pkg/display/debug/logs"
 )
 
 // OriginalOutput holds the original stdout.
 var OriginalOutput io.Writer
 
 // RedirectOutput redirects stdout and stderr so that any output is also sent to logMenu.
-func RedirectOutput(logMenu *debug.LogMenu) {
+func RedirectOutput(logMenu *logs.LogMenu) {
 	// Save original stdout/stderr.
 	OriginalOutput = os.Stdout
 

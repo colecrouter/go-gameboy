@@ -104,3 +104,11 @@ func (v *VRAM) GetMappedTile(tileY, tileX uint8, mapMode TileMapMode, addressing
 func (v *VRAM) GetTile(index int) *tile.Tile {
 	return v.tiles[index]
 }
+
+// GetTileMapValue returns the tile number from the selected tilemap.
+func (v *VRAM) GetTileMapValue(mapMode TileMapMode, index int) uint8 {
+	if mapMode == Map0 {
+		return v.tileMap0[index]
+	}
+	return v.tileMap1[index]
+}
