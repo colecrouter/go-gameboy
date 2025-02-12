@@ -370,4 +370,33 @@ func TestInstructions(t *testing.T) {
 			assert.Equal(t, expectedRet, actualRet, "RST should push correct return address")
 		})
 	})
+
+	t.Run("Conditional Helpers", func(t *testing.T) {
+		// Setup a dummy CPU for direct helper calls.
+		_, cpu := setupWithOpcode(0x00) // opcode is irrelevant here
+		initPC := cpu.registers.pc
+		spBefore := cpu.registers.sp
+
+		// Test jump with false condition: should add 3.
+		cpu.jump(0x2000, false)
+		assert.Equal(t, initPC+3, cpu.registers.pc, "Conditional jump (false) should increment PC by 3")
+
+		// Reset PC.
+		cpu.registers.pc = initPC
+		// Test jumpRelative with false condition: should add 2.
+		var offset int8 = 5
+		cpu.jumpRelative(offset, false)
+		assert.Equal(t, initPC+2, cpu.registers.pc, "Conditional jumpRelative (false) should increment PC by 2")
+
+		// Test call with false condition: should add 3 and not change SP.
+		cpu.registers.pc = initPC
+		cpu.call(0x3000, false)
+		assert.Equal(t, initPC+3, cpu.registers.pc, "Conditional call (false) should increment PC by 3")
+		assert.Equal(t, spBefore, cpu.registers.sp, "Conditional call (false) should not change SP")
+
+		// Test ret with false condition: should add 1.
+		cpu.registers.pc = initPC
+		cpu.ret(false)
+		assert.Equal(t, initPC+1, cpu.registers.pc, "Conditional ret (false) should increment PC by 1")
+	})
 }

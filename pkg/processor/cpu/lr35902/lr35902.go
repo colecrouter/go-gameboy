@@ -14,11 +14,12 @@ type LR35902 struct {
 		a, b, c, d, e, h, l uint8
 		sp, pc              uint16
 	}
-	flags Flags
-	bus   *memory.Bus
-	io    *registers.Registers
-	cb    bool
-	ime   bool
+	flags  Flags
+	bus    *memory.Bus
+	io     *registers.Registers
+	cb     bool
+	ime    bool
+	lastPC uint16
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -51,15 +52,24 @@ func (c *LR35902) Step() int {
 
 	op := instruction.op
 	cycles := instruction.c
+	increment := instruction.p
 
-	if op == nil {
-		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
-	} else {
-		op(c)
+	if c.registers.pc == 0x100 {
+		c.ime = true
 	}
 
-	// Increment PC
-	c.registers.pc++
+	if c.registers.pc == 0x18 {
+		fmt.Println("Reached breakpoint")
+	}
+
+	c.lastPC = c.registers.pc
+	if op == nil {
+		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
+		c.registers.pc++
+	} else {
+		op(c)
+		c.registers.pc += uint16(increment)
+	}
 
 	return cycles
 }
@@ -89,86 +99,6 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
 	return cpu
 }
 
-// PrintRegisters prints the current state of the CPU registers and flags.
-func (c *LR35902) PrintRegisters() {
-	fmt.Printf("\r\nRegisters:\r\n")
-	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\r\n", c.registers.a, c.registers.b, c.registers.c, c.registers.d, c.registers.e)
-	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.registers.h, c.registers.l)
-	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.registers.sp, c.registers.pc)
-	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
-}
-
 func (c *LR35902) PC() uint16 {
 	return c.registers.pc
-}
-
-func (c *LR35902) ISR(isr ISR) {
-	// If master interrupt enable is disabled, return
-	if !c.ime {
-		return
-	}
-
-	// If the interrupt is disabled, return
-	if c.io.InterruptEnable.Read()&(1<<isrOffsets[isr]) == 0 {
-		return
-	}
-
-	// STAT interrupt is special
-	if isr == LCDSTATISR {
-		switch c.io.LCDStatus.PPUMode {
-		case registers.HBlank:
-			if !c.io.LCDStatus.Mode0Interrupt {
-				return
-			}
-		case registers.VBlank:
-			if !c.io.LCDStatus.Mode1Interrupt {
-				return
-			}
-		case registers.OAMScan:
-			if !c.io.LCDStatus.Mode2Interrupt {
-				return
-			}
-		case registers.Drawing:
-			if !c.io.LCDStatus.LYCInterrupt {
-				return
-			}
-		}
-	}
-
-	// Push PC onto stack
-	c.registers.sp -= 2
-	c.bus.Write(c.registers.sp, uint8(c.registers.pc>>8))
-	c.bus.Write(c.registers.sp+1, uint8(c.registers.pc))
-
-	// Jump to ISR
-	c.registers.pc = isrAddresses[isr]
-
-	// Disable interrupts
-	c.ime = false
-}
-
-type ISR int
-
-const (
-	VBlankISR ISR = iota
-	LCDSTATISR
-	TimerISR
-	SerialISR
-	JoypadISR
-)
-
-var isrAddresses = [5]uint16{
-	VBlankISR:  0x0040,
-	LCDSTATISR: 0x0048,
-	TimerISR:   0x0050,
-	SerialISR:  0x0058,
-	JoypadISR:  0x0060,
-}
-
-var isrOffsets = [5]uint8{
-	VBlankISR:  0,
-	LCDSTATISR: 1,
-	TimerISR:   2,
-	SerialISR:  3,
-	JoypadISR:  4,
 }
