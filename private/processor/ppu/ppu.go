@@ -108,7 +108,7 @@ func (p *PPU) DisplayClock() {
 	// Draw background layer
 	bgMapMode := vram.TileMapMode(p.registers.LCDControl.BackgroundUseSecondTileMap)
 	for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
-		pixelY := int(tileY)*tile.TILE_SIZE - int(p.registers.ScrollY)
+		pixelY := (int(tileY)*tile.TILE_SIZE - int(p.registers.ScrollY) + 256) % 256
 
 		for tileX := uint8(0); tileX < visibleColumns/tile.TILE_SIZE; tileX++ {
 			pixelX := int(tileX)*tile.TILE_SIZE - int(p.registers.ScrollX)
