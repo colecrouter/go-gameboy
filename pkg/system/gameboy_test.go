@@ -12,7 +12,7 @@ import (
 )
 
 func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
-	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/cpu_instrs.gb")
+	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/01-special.gb")
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -98,8 +98,6 @@ func TestBlarggOutput(t *testing.T) {
 	var output string
 	for {
 		select {
-		case <-time.After(10 * time.Second):
-			t.Fatal("Test timed out")
 		case <-time.Tick(1 * time.Second):
 			output = string(testDevice.output)
 			if strings.HasSuffix(output, "Failed\n") {

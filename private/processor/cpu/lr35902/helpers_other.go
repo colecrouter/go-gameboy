@@ -2,53 +2,77 @@ package lr35902
 
 // Other
 func (c *LR35902) decimalAdjust() {
-	// Copied from https://stackoverflow.com/a/57837042/9731890
-	var t uint8
+	a := c.registers.a
 
-	if c.flags.HalfCarry || (c.registers.a&0x0F) > 9 {
-		t++
+	var carry uint8
+	var halfCarry uint8
+	var zero uint8
+	if c.flags.Carry {
+		carry = 1
+	}
+	if c.flags.HalfCarry {
+		halfCarry = 1
+	}
+	if c.flags.Zero {
+		zero = 1
 	}
 
-	if c.flags.Carry || c.registers.a > 0x99 {
-		t += 2
-		c.flags.Carry = true
-	}
-
-	// Builds final H flag
-	if c.flags.Subtract && !c.flags.HalfCarry {
-		c.flags.HalfCarry = false
+	if !c.flags.Subtract {
+		if c.flags.HalfCarry || (a&0xF) > 9 {
+			a += 0x06
+		}
+		if c.flags.Carry || a > 0x9F {
+			a += 0x60
+		}
 	} else {
-		if c.flags.Subtract && c.flags.HalfCarry {
-			c.flags.HalfCarry = ((c.registers.a & 0x0F) < 6)
-		} else {
-			c.flags.HalfCarry = ((c.registers.a & 0x0F) >= 0x0A)
+		if c.flags.HalfCarry {
+			a = (a - 6) & 0xFF
+		}
+		if c.flags.Carry {
+			a -= 0x60
 		}
 	}
 
-	switch t {
-	case 1:
-		if c.flags.Subtract {
-			c.registers.a -= 6
-		} else {
-			c.registers.a += 6
-		}
-	case 2:
-		if c.flags.Subtract {
-			c.registers.a -= 0x60
-		} else {
-			c.registers.a += 0x60
-		}
-	case 3:
-		if c.flags.Subtract {
-			c.registers.a -= 0x66
-		} else {
-			c.registers.a += 0x66
-		}
+	c.flags.Write(c.flags.Read() & ^(halfCarry | zero))
+
+	if (int(a) & 0x100) == 0x100 {
+		c.flags.Write(c.flags.Read() | carry)
 	}
 
-	if c.registers.a == 0 {
-		c.flags.Zero = true
-	} else {
-		c.flags.Zero = false
+	a &= 0xFF
+
+	if a == 0 {
+		c.flags.Write(c.flags.Read() | zero)
 	}
+
+	c.registers.a = a
+
+	// a := c.registers.a
+	// subtract := c.flags.Subtract
+	// halfCarry := c.flags.HalfCarry
+	// carry := c.flags.Carry
+	// offset := uint8(0)
+
+	// if !subtract {
+	// 	if halfCarry || (a&0x0F) > 0x09 {
+	// 		offset |= 0x06
+	// 	}
+	// 	if carry || a > 0x99 {
+	// 		offset |= 0x60
+	// 	}
+	// 	a += offset
+	// } else {
+	// 	if halfCarry {
+	// 		offset |= 0x06
+	// 	}
+	// 	if carry {
+	// 		offset |= 0x60
+	// 	}
+	// 	a -= offset
+	// }
+
+	// c.registers.a = a
+	// c.flags.Zero = (a == 0)
+	// c.flags.HalfCarry = false
+	// c.flags.Carry = ((offset & 0x60) != 0)
 }

@@ -222,6 +222,72 @@ func TestInstructions(t *testing.T) {
 			// Updated: Carry flag should remain true after RRA.
 			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RRA")
 		})
+
+		t.Run("CB Rotation", func(t *testing.T) {
+			t.Run("Instruction: RLC_B", func(t *testing.T) {
+				_, cpu := setupWithOpcode(0xCB, 0x00)
+				cpu.registers.b = 0x80 // 10000000
+				cpu.Step()
+				cpu.Step()
+				assert.Equal(t, uint8(0x01), cpu.registers.b, "RLC_B should rotate B left, result 0x01")
+				assert.True(t, cpu.flags.Carry, "RLC_B should set Carry flag")
+			})
+
+			t.Run("Instruction: RRC_B", func(t *testing.T) {
+				_, cpu := setupWithOpcode(0xCB, 0x08)
+				cpu.registers.b = 0x01 // 00000001
+				cpu.Step()
+				cpu.Step()
+				assert.Equal(t, uint8(0x80), cpu.registers.b, "RRC_B should rotate B right, result 0x80")
+				assert.True(t, cpu.flags.Carry, "RRC_B should set Carry flag")
+			})
+
+			t.Run("Instruction: RL_B", func(t *testing.T) {
+				_, cpu := setupWithOpcode(0xCB, 0x10)
+				cpu.registers.b = 0x80 // 10000000
+				cpu.flags.Carry = true // initial carry is set
+				cpu.Step()
+				cpu.Step()
+				assert.Equal(t, uint8(0x01), cpu.registers.b, "RL_B should rotate B left through carry, result 0x01")
+				assert.True(t, cpu.flags.Carry, "RL_B should set Carry flag")
+			})
+
+			t.Run("Instruction: RR_B", func(t *testing.T) {
+				_, cpu := setupWithOpcode(0xCB, 0x18)
+				cpu.registers.b = 0x01 // 00000001
+				cpu.flags.Carry = true // initial carry is set
+				cpu.Step()
+				cpu.Step()
+				assert.Equal(t, uint8(0x80), cpu.registers.b, "RR_B should rotate B right through carry, result 0x80")
+				assert.True(t, cpu.flags.Carry, "RR_B should set Carry flag")
+			})
+
+			t.Run("Instruction: RLC_(HL)", func(t *testing.T) {
+				bus, cpu := setupWithOpcode(0xCB, 0x06)
+				hlAddr := uint16(0x2000)
+				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				// Write initial value: 0x85 (10000101)
+				bus.Write(hlAddr, 0x85)
+				cpu.Step()
+				cpu.Step()
+				// Expected: (0x85<<1 | (0x85>>7)) = (0x0A | 0x01) = 0x0B
+				assert.Equal(t, uint8(0x0B), bus.Read(hlAddr), "RLC_(HL) should rotate value in memory at HL")
+				assert.True(t, cpu.flags.Carry, "RLC_(HL) should set Carry flag")
+			})
+
+			t.Run("Instruction: RRC_(HL)", func(t *testing.T) {
+				bus, cpu := setupWithOpcode(0xCB, 0x0E)
+				hlAddr := uint16(0x2000)
+				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				// Write initial value: 0x01 (00000001)
+				bus.Write(hlAddr, 0x01)
+				cpu.Step()
+				cpu.Step()
+				// Expected: (0x01>>1 | (0x01<<7)&0xFF) = (0x00 | 0x80) = 0x80
+				assert.Equal(t, uint8(0x80), bus.Read(hlAddr), "RRC_(HL) should rotate value in memory at HL")
+				assert.True(t, cpu.flags.Carry, "RRC_(HL) should set Carry flag")
+			})
+		})
 	})
 
 	t.Run("ALU", func(t *testing.T) {

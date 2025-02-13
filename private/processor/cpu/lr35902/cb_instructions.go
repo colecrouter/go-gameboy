@@ -10,9 +10,9 @@ type instructionGenerator func(*uint8) func(*LR35902)
 
 var firstHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RLC
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, true) } },
-	// RL
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, false) } },
+	// RL
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, true) } },
 	// SLA
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, true) } },
 	// SWAP
@@ -45,9 +45,9 @@ var firstHalfCbInstructionsHelper = [16]instructionGenerator{
 
 var secondHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RRC
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, true) } },
-	// RR
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, false) } },
+	// RR
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, true) } },
 	// SRA
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, false) } },
 	// SRL
@@ -83,8 +83,8 @@ func generateCbInstructions() [0x100]instruction {
 
 	// Register mapping: indices 0-7 correspond to B, C, D, E, H, L, (HL), A.
 	// nil indicates (HL) which is handled specially.
-	regMapping := func(c *LR35902) []*uint8 {
-		return []*uint8{
+	regMapping := func(c *LR35902) [8]*uint8 {
+		return [8]*uint8{
 			&c.registers.b,
 			&c.registers.c,
 			&c.registers.d,
@@ -96,69 +96,64 @@ func generateCbInstructions() [0x100]instruction {
 		}
 	}
 
-	for i := 0; i < 16; i++ {
-		msb := uint8(i) << 4
-		// Generate first half instructions
-		for j, gen := range firstHalfCbInstructionsHelper {
-			// Determine target register index (0-7)
-			regIndex := j & 0x07
-			CBOpcode := msb + uint8(j)
-			if regIndex == 6 { // (HL) special handling
-				CBInstructions[CBOpcode] = instruction{
-					c: 16,
-					p: 1,
-					op: func(c *LR35902) {
-						addr := toRegisterPair(c.registers.h, c.registers.l)
-						val := c.bus.Read(addr)
-						c.rotate(&val, true, true)
-						c.bus.Write(addr, val)
-					},
-				}
-				continue
-			}
-			// Capture for closure
-			genFun := gen
-			// Use the register from mapping
-			CBInstructions[CBOpcode] = instruction{
-				c: 8,
-				p: 1,
-				op: func(c *LR35902) {
-					regs := regMapping(c)
-					target := regs[regIndex]
-					genFun(target)(c)
-				},
-			}
-		}
+	for y := range 16 {
+		msb := uint8(y) << 4
+		for x := range 16 {
+			lsb := uint8(x)
+			opcode := msb + lsb
 
-		// Generate second half instructions
-		for j, gen := range secondHalfCbInstructionsHelper {
-			// For second half, lower 3 bits come from (0x08+j)
-			regIndex := (0x08 + j) & 0x07
-			CBOpcode := msb + 0x08 + uint8(j)
-			if regIndex == 6 { // (HL) special handling
-				CBInstructions[CBOpcode] = instruction{
-					c: 16,
-					p: 1,
-					op: func(c *LR35902) {
-						addr := toRegisterPair(c.registers.h, c.registers.l)
-						val := c.bus.Read(addr)
-						c.shift(&val, false)
-						c.bus.Write(addr, val)
-					},
+			if x < 8 {
+				// First half: use y as the op code selector.
+				gen := firstHalfCbInstructionsHelper[y]
+				if x == 6 {
+					CBInstructions[opcode] = instruction{
+						c: 16,
+						p: 1,
+						op: func(c *LR35902) {
+							addr := toRegisterPair(c.registers.h, c.registers.l)
+							val := c.bus.Read(addr)
+							gen(&val)(c)
+							c.bus.Write(addr, val)
+						},
+					}
+				} else {
+					CBInstructions[opcode] = instruction{
+						c: 8,
+						p: 1,
+						op: func(c *LR35902) {
+							regs := regMapping(c)
+							target := regs[x]
+							gen(target)(c)
+						},
+					}
 				}
-				continue
+			} else {
+				// Second half: use y as the op code selector.
+				gen := secondHalfCbInstructionsHelper[y]
+				if x == 14 {
+					CBInstructions[opcode] = instruction{
+						c: 16,
+						p: 1,
+						op: func(c *LR35902) {
+							addr := toRegisterPair(c.registers.h, c.registers.l)
+							val := c.bus.Read(addr)
+							gen(&val)(c)
+							c.bus.Write(addr, val)
+						},
+					}
+				} else {
+					CBInstructions[opcode] = instruction{
+						c: 8,
+						p: 1,
+						op: func(c *LR35902) {
+							regs := regMapping(c)
+							target := regs[x-8]
+							gen(target)(c)
+						},
+					}
+				}
 			}
-			// Capture for closure
-			genFun := gen
-			CBInstructions[CBOpcode] = instruction{
-				c: 8,
-				p: 1,
-				op: func(c *LR35902) {
-					regs := regMapping(c)
-					target := regs[regIndex]
-					genFun(target)(c)
-				},
-			}
+
 		}
 	}
 

@@ -58,6 +58,10 @@ func (c *LR35902) Step() int {
 		c.ime = true
 	}
 
+	if c.registers.pc == 0x98 {
+		// println("Breakpoint")
+	}
+
 	c.lastPC = c.registers.pc
 	if op == nil {
 		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
