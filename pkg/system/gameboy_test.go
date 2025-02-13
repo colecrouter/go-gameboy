@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
-	f, err := os.ReadFile("../../tetris.gb")
+	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/cpu_instrs.gb")
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -49,7 +50,7 @@ func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
 
 // Renamed existing benchmark to clarify its purpose
 func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
-	f, err := os.ReadFile("../../tetris.gb")
+	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/cpu_instrs.gb")
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -73,4 +74,40 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	expectedCycles := CLOCK_SPEED
 	b.Logf("Total CPU cycles processed: %d, expected: ~%d", gb.totalCycles, expectedCycles)
 	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
+}
+
+// TestBlarggOutput loads the CPU instructions ROM and checks serial output.
+func TestBlarggOutput(t *testing.T) {
+	// Replace with the actual ROM path when available.
+	romData, err := os.ReadFile("../../tests/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := gamepak.NewGamePak(romData)
+	// Use the test setup that connects the test serial device.
+	gb, testDevice := SetupBlarggTestSystem()
+	// Insert cartridge and any setup needed.
+	gb.CartridgeReader.InsertCartridge(game)
+
+	go gb.Start()
+	defer gb.Stop()
+
+	// Wait for output to end with either "Failed\n" or "Passed\n".
+	// Or wait for a timeout.
+
+	var output string
+	for {
+		select {
+		case <-time.After(10 * time.Second):
+			t.Fatal("Test timed out")
+		case <-time.Tick(1 * time.Second):
+			output = string(testDevice.output)
+			if strings.HasSuffix(output, "Failed\n") {
+				t.Fatal("Test failed")
+			} else if strings.HasSuffix(output, "Passed\n") {
+				t.Log("Test passed")
+				break
+			}
+		}
+	}
 }

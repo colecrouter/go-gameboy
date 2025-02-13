@@ -12,7 +12,7 @@ import (
 )
 
 type PPU struct {
-	cpu              *lr35902.LR35902
+	isr              func(lr35902.ISR)
 	vram             *vram.VRAM
 	oam              *memory.OAM
 	registers        *registers.Registers
@@ -37,9 +37,9 @@ const (
 )
 
 // NewPPU creates a new PPU instance
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, cpu *lr35902.LR35902) *PPU {
+func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, isr func(lr35902.ISR)) *PPU {
 	return &PPU{
-		cpu:       cpu,
+		isr:       isr,
 		vram:      vram,
 		oam:       oam,
 		registers: registers,
@@ -66,19 +66,19 @@ func (p *PPU) SystemClock() {
 		p.registers.LCDStatus.PPUMode = registers.VBlank
 
 		if p.registers.LY == visibleLines {
-			p.cpu.ISR(lr35902.VBlankISR)
+			p.isr(lr35902.VBlankISR)
 		}
 	} else {
 		switch p.lineCycleCounter {
 		case 0:
 			p.registers.LCDStatus.PPUMode = registers.OAMScan
-			p.cpu.ISR(lr35902.LCDSTATISR)
+			p.isr(lr35902.LCDSTATISR)
 		case oamScanCycles:
 			p.registers.LCDStatus.PPUMode = registers.Drawing
-			p.cpu.ISR(lr35902.LCDSTATISR)
+			p.isr(lr35902.LCDSTATISR)
 		case oamScanCycles + pixelTransferCycles:
 			p.registers.LCDStatus.PPUMode = registers.HBlank
-			p.cpu.ISR(lr35902.LCDSTATISR)
+			p.isr(lr35902.LCDSTATISR)
 		}
 	}
 

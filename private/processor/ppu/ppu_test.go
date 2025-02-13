@@ -24,7 +24,7 @@ func TestPPU(t *testing.T) {
 	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
 	cpu := lr35902.NewLR35902(&memory.Bus{}, regs)
 
-	ppuUnit := NewPPU(vramModule, oamModule, regs, cpu)
+	ppuUnit := NewPPU(vramModule, oamModule, regs, cpu.ISR)
 
 	ppuUnit.registers.LCDControl.Use8000Method = true
 

@@ -71,10 +71,6 @@ func (c *LR35902) Step() int {
 }
 
 func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
-	if bus == nil {
-		panic("Bus is nil")
-	}
-
 	cpu := &LR35902{initialized: true}
 
 	cpu.bus = bus

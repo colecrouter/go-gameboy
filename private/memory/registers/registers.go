@@ -13,7 +13,7 @@ type Registers struct {
 	cartridge   *reader.CartridgeReader
 
 	JoypadState        uint8          // 0xFF00
-	SerialData         uint16         // 0xFF01-0xFF02
+	Serial             SerialTransfer // 0xFF01-0xFF02
 	Timer              Timer          // 0xFF04-0xFF07
 	Interrupts         InterruptFlags // 0xFF0F
 	Audio              uint32         // 0xFF10-0xFF26
@@ -63,11 +63,12 @@ $FF68	$FF6B	CGB	BG / OBJ Palettes
 $FF70		CGB	WRAM Bank Select
 */
 
-func NewRegisters(oam *memory.OAM, cartridge *reader.CartridgeReader) *Registers {
+func NewRegisters(oam *memory.OAM, cartridge *reader.CartridgeReader, serialISR func()) *Registers {
 	return &Registers{
 		oam:         oam,
 		cartridge:   cartridge,
 		initialized: true,
+		Serial:      *NewSerialTransfer(serialISR),
 	}
 }
 
@@ -80,7 +81,8 @@ func (r *Registers) Read(addr uint16) uint8 {
 	case 0x00:
 		return r.JoypadState
 	case 0x01, 0x02:
-		return 0
+		offset := addr - 0x01
+		return r.Serial.Read(offset)
 	case 0x04, 0x05, 0x06, 0x07:
 		offset := addr - 0x04
 		return r.Timer.Read(offset)
@@ -156,7 +158,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.JoypadState = value
 	case 0x01, 0x02:
 		offset := addr - 0x01
-		r.SerialData = uint16(value) << (8 * offset)
+		r.Serial.Write(offset, value)
 	case 0x04, 0x05, 0x06, 0x07:
 		offset := addr - 0x04
 		r.Timer.Write(offset, value)
@@ -209,11 +211,13 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0xFF:
 		r.InterruptEnable.Write(value)
 	default:
-		if addr >= 0x71 && addr <= 0xFF {
-			r.rest[addr-0x71] = value
-			return
-		}
-		panic("Invalid register address")
+		// if addr >= 0x71 && addr <= 0xFF {
+		// 	r.rest[addr-0x71] = value
+		// 	return
+		// }
+		// panic("Invalid register address")
+
+		return
 	}
 }
 

@@ -39,7 +39,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
 	oamModule := &memory.OAM{}
-	gb.IO = registers.NewRegisters(oamModule, gb.CartridgeReader)
+	gb.IO = registers.NewRegisters(oamModule, gb.CartridgeReader, func() { gb.interrupt(lr35902.SerialISR) })
 	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO)
 	gb.CartridgeReader = reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
@@ -60,7 +60,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
 
-	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.CPU)
+	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.interrupt)
 
 	return gb
 }
@@ -110,4 +110,12 @@ func (gb *GameBoy) PC() uint16 {
 
 func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {
 	gb.CartridgeReader.InsertCartridge(game)
+}
+
+func (gb *GameBoy) ConnectSerialDevice(d registers.SerialDevice) {
+	gb.IO.Serial.Connect(d)
+}
+
+func (gb *GameBoy) interrupt(isr lr35902.ISR) {
+	gb.CPU.ISR(isr)
 }
