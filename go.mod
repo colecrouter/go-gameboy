@@ -1,6 +1,6 @@
 module github.com/colecrouter/gameboy-go
 
-go 1.22
+go 1.24
 
 require (
 	github.com/soniakeys/quant v1.0.0

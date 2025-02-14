@@ -76,36 +76,48 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
 }
 
-// TestBlarggOutput loads the CPU instructions ROM and checks serial output.
-func TestBlarggOutput(t *testing.T) {
-	// Replace with the actual ROM path when available.
-	romData, err := os.ReadFile("../../tests/blargg/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb")
+// TestBlarggOutput runs the cpu_instrs test ROMs from Blargg's test suite.
+func TestGameBoy_BlarggCPUInstrs(t *testing.T) {
+	// Get all roms in ./tests/blargg/cpu_instrs/individual/*.gb
+
+	dir := "../../tests/blargg/cpu_instrs/individual/"
+	files, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
-	game := gamepak.NewGamePak(romData)
-	// Use the test setup that connects the test serial device.
-	gb, testDevice := SetupBlarggTestSystem()
-	// Insert cartridge and any setup needed.
-	gb.CartridgeReader.InsertCartridge(game)
 
-	go gb.Start()
-	defer gb.Stop()
+	for _, file := range files {
+		f := file // capture file variable
+		t.Run(f.Name(), func(t *testing.T) {
+			t.Parallel()
 
-	// Wait for output to end with either "Failed\n" or "Passed\n".
-	// Or wait for a timeout.
-
-	var output string
-	for {
-		select {
-		case <-time.Tick(1 * time.Second):
-			output = string(testDevice.output)
-			if strings.HasSuffix(output, "Failed\n") {
-				t.Fatal("Test failed")
-			} else if strings.HasSuffix(output, "Passed\n") {
-				t.Log("Test passed")
-				break
+			// Replace with the actual ROM path when available.
+			romData, err := os.ReadFile("../../tests/blargg/cpu_instrs/individual/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
+			game := gamepak.NewGamePak(romData)
+			// Use the test setup that connects the test serial device.
+			gb, testDevice := SetupBlarggTestSystem()
+			// Insert cartridge and any setup needed.
+			gb.CartridgeReader.InsertCartridge(game)
+
+			go gb.Start()
+			defer gb.Stop()
+
+			// Use a ticker for periodic checks and a timeout channel.
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
+
+			for range ticker.C {
+				output := string(testDevice.output)
+				if strings.Contains(output, "Failed") {
+					t.Fatal("Test failed")
+				} else if strings.Contains(output, "Passed") {
+					t.Log("Test passed")
+					return
+				}
+			}
+		})
 	}
 }
