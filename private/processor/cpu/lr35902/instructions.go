@@ -934,7 +934,6 @@ var instructions = [0x100]instruction{
 	}},
 	// RETI
 	0xD9: {c: 16, p: 0, op: func(c *LR35902) {
-		c.ime = true
 		c.ret(true)
 	}},
 	// JP C,a16
@@ -1055,7 +1054,7 @@ var instructions = [0x100]instruction{
 	}},
 	// EI
 	0xFB: {c: 4, p: 1, op: func(c *LR35902) {
-		c.ime = true
+		c.eiDelay = 2
 	}},
 	// INVALID
 	// INVALID

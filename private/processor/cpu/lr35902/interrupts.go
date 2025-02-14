@@ -37,8 +37,7 @@ func (c *LR35902) ISR(isr ISR) {
 
 	// Push PC onto stack
 	c.registers.sp -= 2
-	c.bus.Write(c.registers.sp, uint8(c.registers.pc>>8))
-	c.bus.Write(c.registers.sp+1, uint8(c.registers.pc))
+	c.bus.Write16(c.registers.sp, c.registers.pc)
 
 	// Jump to ISR
 	c.registers.pc = isrAddresses[isr]

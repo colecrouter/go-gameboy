@@ -14,12 +14,13 @@ type LR35902 struct {
 		a, b, c, d, e, h, l uint8
 		sp, pc              uint16
 	}
-	flags  Flags
-	bus    *memory.Bus
-	io     *registers.Registers
-	cb     bool
-	ime    bool
-	lastPC uint16
+	flags   Flags
+	bus     *memory.Bus
+	io      *registers.Registers
+	cb      bool
+	ime     bool
+	eiDelay int
+	lastPC  uint16
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -54,10 +55,6 @@ func (c *LR35902) Step() int {
 	cycles := instruction.c
 	increment := instruction.p
 
-	if c.registers.pc == 0x100 {
-		c.ime = true
-	}
-
 	if mnemonic == "RRC (HL)" {
 		// println("Breakpoint")
 	}
@@ -69,6 +66,15 @@ func (c *LR35902) Step() int {
 	} else {
 		op(c)
 		c.registers.pc += uint16(increment)
+	}
+
+	// Delay EI effect: Decrement counter at the very end of the instruction.
+	if c.eiDelay > 0 {
+		c.eiDelay--
+		if c.eiDelay == 0 {
+			c.ime = true
+			// (Optional log: fmt.Printf("IME enabled at PC: 0x%04X\n", c.registers.pc))
+		}
 	}
 
 	return cycles
