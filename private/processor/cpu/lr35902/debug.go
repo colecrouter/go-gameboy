@@ -287,7 +287,7 @@ func getCBMnemonic(op byte) string {
 		case 0x7:
 			return fmt.Sprintf("BIT 6,%s", reg)
 		case 0x8:
-			return fmt.Sprintf("RES 2,%s", reg)
+			return fmt.Sprintf("RES 0,%s", reg)
 		case 0x9:
 			return fmt.Sprintf("RES 2,%s", reg)
 		case 0xA:

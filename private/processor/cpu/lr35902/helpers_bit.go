@@ -84,20 +84,12 @@ func (c *LR35902) cp8(r1 uint8, r2 uint8) {
 }
 func (c *LR35902) bit(b uint8, r uint8) {
 	zero := Reset
-	hc := Set
-	var carry FlagState
 
 	if r&(1<<b) == 0 {
 		zero = Set
 	}
 
-	if b == 7 {
-		carry = Set
-	} else {
-		carry = Reset
-	}
-
-	c.setFlags(zero, Reset, hc, carry)
+	c.setFlags(zero, Reset, Set, Leave)
 }
 
 // Bit manipulation
