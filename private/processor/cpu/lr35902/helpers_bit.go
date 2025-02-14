@@ -17,49 +17,116 @@ RLCA
 */
 
 // Rotates/Shifts
-func (c *LR35902) rotate(r *uint8, left bool, useCarryBit bool) {
+func (c *LR35902) rotate(r *uint8, left, useCarryBit, updateZ bool) {
+	// Extract the bit that will be rotated out.
+	// For left rotate, that is the MSB; for right rotate, the LSB.
 	var carriedOut uint8
-	var carriedIn uint8
-
 	if left {
-		carriedOut = *r >> 7
+		carriedOut = (*r & 0x80) >> 7
 	} else {
 		carriedOut = *r & 1
 	}
 
+	// Determine the input bit.
+	// For instructions that use the external carry, use c.flags.Carry;
+	// otherwise, use the bit that got shifted out.
+	var carryIn uint8
 	if useCarryBit {
 		if c.flags.Carry {
-			carriedIn = 1
+			carryIn = 1
+		} else {
+			carryIn = 0
 		}
 	} else {
-		carriedIn = carriedOut
+		carryIn = carriedOut
 	}
 
+	// Perform the rotation.
 	if left {
-		*r = *r<<1 | carriedIn
+		*r = (*r << 1) | carryIn
 	} else {
-		*r = *r>>1 | (carriedIn << 7)
+		*r = (*r >> 1) | (carryIn << 7)
 	}
 
-	carryFlag := Reset
+	// Set the new Carry flag based on the bit that was rotated out.
+	var newCarryFlag = Reset
 	if carriedOut == 1 {
-		carryFlag = Set
+		newCarryFlag = Set
 	}
 
-	c.setFlags(Reset, Reset, Reset, carryFlag)
-}
-func (c *LR35902) shift(r *uint8, left bool) {
-	if left {
-		c.flags.Carry = *r&0b10000000 == 0b10000000
-		*r <<= 1
+	// Update the Zero flag only if requested (CB rotates update Z).
+	var newZFlag FlagState
+	if updateZ {
+		if *r == 0 {
+			newZFlag = Set
+		} else {
+			newZFlag = Reset
+		}
 	} else {
-		c.flags.Carry = *r&0b00000001 == 0b00000001
-		*r >>= 1
+		newZFlag = Reset // Always clear Z when !updateZ.
 	}
+
+	// The N and H flags are reset on rotate instructions.
+	c.setFlags(newZFlag, Reset, Reset, newCarryFlag)
+}
+func (c *LR35902) shift(r *uint8, left, arithmeticRight bool) {
+	original := *r
+
+	// Determine what the new Carry flag should be.
+	var newCarry bool
+
+	if left {
+		// For left shifts, the high bit goes into carry.
+		newCarry = (original & 0x80) != 0
+		*r = original << 1
+	} else {
+		// For right shifts, the low bit is carried out.
+		newCarry = (original & 0x01) != 0
+		if arithmeticRight {
+			// For arithmetic right shifts, preserve the original MSB.
+			msb := original & 0x80
+			*r = (original >> 1) | msb
+		} else {
+			*r = original >> 1
+		}
+	}
+
+	// Set the Zero flag if the result is zero.
+	flagZero := (*r == 0)
+
+	// Now, convert boolean conditions into flag behaviors.
+	// For c.setFlags(zero, N, H, carry):
+	var zeroBehavior, nBehavior, hBehavior, carryBehavior FlagState
+
+	if flagZero {
+		zeroBehavior = Set
+	} else {
+		zeroBehavior = Reset
+	}
+
+	// The N and H flags are always cleared after these shifts.
+	nBehavior = Reset
+	hBehavior = Reset
+
+	if newCarry {
+		carryBehavior = Set
+	} else {
+		carryBehavior = Reset
+	}
+
+	// Update the flags.
+	c.setFlags(zeroBehavior, nBehavior, hBehavior, carryBehavior)
 }
 func (c *LR35902) swap(r *uint8) {
 	// Swap the upper and lower nibbles
 	*r = (*r&0xf)<<4 | *r>>4
+
+	zero := Reset
+	if *r == 0 {
+		zero = Set
+	}
+
+	c.setFlags(zero, Reset, Reset, Reset)
 }
 
 // Comparing

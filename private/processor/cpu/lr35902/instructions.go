@@ -36,7 +36,7 @@ var instructions = [0x100]instruction{
 	}},
 	// RLCA: rotate A left circularly (ignore previous carry)
 	0x07: {c: 4, p: 1, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, true, false)
+		c.rotate(&c.registers.a, true, false, false)
 	}},
 	// LD (a16),SP
 	0x08: {c: 20, p: 3, op: func(c *LR35902) {
@@ -72,7 +72,7 @@ var instructions = [0x100]instruction{
 	}},
 	// RRCA: rotate A right circularly (ignore previous carry)
 	0x0F: {c: 4, p: 1, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, false, false)
+		c.rotate(&c.registers.a, false, false, false)
 	}},
 	// STOP 0
 	0x10: {c: 4, p: 2, op: func(c *LR35902) {
@@ -105,7 +105,7 @@ var instructions = [0x100]instruction{
 	}},
 	// RLA: rotate A left through carry (use previous carry)
 	0x17: {c: 4, p: 1, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, true, true)
+		c.rotate(&c.registers.a, true, true, false)
 	}},
 	// JR r8
 	0x18: {c: 12, p: 0, op: func(c *LR35902) {
@@ -138,7 +138,7 @@ var instructions = [0x100]instruction{
 	}},
 	// RRA: rotate A right through carry (use previous carry)
 	0x1F: {c: 4, p: 1, op: func(c *LR35902) {
-		c.rotate(&c.registers.a, false, true)
+		c.rotate(&c.registers.a, false, true, false)
 	}},
 
 	// JR NZ,r8
@@ -284,7 +284,13 @@ var instructions = [0x100]instruction{
 		c.load8(&c.registers.a, c.getImmediate8())
 	}},
 	// CCF
-	// 0x3F: /* CCF - no helper, leave commented */
+	0x3F: {c: 4, p: 1, op: func(c *LR35902) {
+		carry := Reset
+		if !c.flags.Carry {
+			carry = Set
+		}
+		c.setFlags(Leave, Reset, Reset, carry)
+	}},
 	// LD B,B
 	0x40: {c: 4, p: 1, op: func(c *LR35902) {
 		c.load8(&c.registers.b, c.registers.b)

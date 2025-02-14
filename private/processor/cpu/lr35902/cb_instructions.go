@@ -10,11 +10,11 @@ type instructionGenerator func(*uint8) func(*LR35902)
 
 var firstHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RLC
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, false) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, false, true) } },
 	// RL
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, true) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, true, true, true) } },
 	// SLA
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, true) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, true, false) } },
 	// SWAP
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.swap(u) } },
 	// BIT 0, X
@@ -45,13 +45,13 @@ var firstHalfCbInstructionsHelper = [16]instructionGenerator{
 
 var secondHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RRC
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, false) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, false, true) } },
 	// RR
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, true) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.rotate(u, false, true, true) } },
 	// SRA
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, false) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, false, true) } },
 	// SRL
-	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, true) } },
+	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.shift(u, false, false) } },
 	// BIT 1, X
 	func(u *uint8) func(*LR35902) { return func(c *LR35902) { c.bit(1, *u) } },
 	// BIT 3, X

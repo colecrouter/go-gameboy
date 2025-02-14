@@ -34,16 +34,16 @@ func (c *LR35902) Step() int {
 
 	// Run instruction
 	var instruction instruction
+	var mnemonic string
 	if c.cb {
 		instruction = cbInstructions[opcode]
 		c.cb = false
 	} else {
+		mnemonic = getCBMnemonic(opcode)
 		instruction = instructions[opcode]
 	}
 
-	var mnemonic string
 	if c.bus.Read(c.registers.pc-1) == 0xCB {
-		mnemonic = getCBMnemonic(opcode)
 	} else {
 		mnemonic = mnemonics[opcode]
 	}
@@ -58,7 +58,7 @@ func (c *LR35902) Step() int {
 		c.ime = true
 	}
 
-	if mnemonic == "DEC SP" {
+	if mnemonic == "RRC (HL)" {
 		// println("Breakpoint")
 	}
 

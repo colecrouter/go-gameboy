@@ -299,6 +299,32 @@ func TestInstructions(t *testing.T) {
 				assert.Equal(t, uint8(0x80), bus.Read(hlAddr), "RRC_(HL) should rotate value in memory at HL")
 				assert.True(t, cpu.flags.Carry, "RRC_(HL) should set Carry flag")
 			})
+
+			t.Run("Instruction: SRL A", func(t *testing.T) {
+				_, cpu := setupWithOpcode(0xCB, 0x3F) // CB prefix, SRL A opcode
+				cpu.registers.a = 0x02                // binary: 0000 0010
+				cpu.Step()                            // process CB prefix
+				cpu.Step()                            // execute SRL A
+				assert.Equal(t, uint8(0x01), cpu.registers.a, "SRL A: A should be shifted right logically")
+				assert.False(t, cpu.flags.Zero, "SRL A: Zero flag should be false")
+				assert.False(t, cpu.flags.HalfCarry, "SRL A: HalfCarry flag should be false")
+				assert.False(t, cpu.flags.Subtract, "SRL A: Subtract flag should be false")
+				assert.False(t, cpu.flags.Carry, "SRL A: Carry flag should reflect LSB (expected false)")
+			})
+
+			t.Run("Instruction: SRL (HL)", func(t *testing.T) {
+				bus, cpu := setupWithOpcode(0xCB, 0x3E) // CB prefix, SRL (HL) opcode
+				hlAddr := uint16(0x2000)
+				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				bus.Write(hlAddr, 0x03) // binary: 0000 0011; expected result: 0x01 with Carry true
+				cpu.Step()              // process CB prefix
+				cpu.Step()              // execute SRL (HL)
+				assert.Equal(t, uint8(0x01), bus.Read(hlAddr), "SRL (HL): value should be shifted right logically")
+				assert.False(t, cpu.flags.Zero, "SRL (HL): Zero flag should be false")
+				assert.False(t, cpu.flags.HalfCarry, "SRL (HL): HalfCarry flag should be false")
+				assert.False(t, cpu.flags.Subtract, "SRL (HL): Subtract flag should be false")
+				assert.True(t, cpu.flags.Carry, "SRL (HL): Carry flag should be set (LSB was 1)")
+			})
 		})
 	})
 

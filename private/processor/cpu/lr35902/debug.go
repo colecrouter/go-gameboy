@@ -268,7 +268,7 @@ func getCBMnemonic(op byte) string {
 
 	// Determine instruction based on upper bits
 	// First half
-	if op < 0x40 {
+	if (op & 0x0F) < 0x08 {
 		switch op >> 4 {
 		case 0x0:
 			return fmt.Sprintf("RLC %s", reg)
