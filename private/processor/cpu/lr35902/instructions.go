@@ -1065,6 +1065,6 @@ var instructions = [0x100]instruction{
 	}},
 	// RST 38H
 	0xFF: {c: 4, p: 0, op: func(c *LR35902) {
-		c.call(0x0038, true)
+		c.rst(0x38)
 	}},
 }
