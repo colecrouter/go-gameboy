@@ -123,6 +123,18 @@ func TestInstructions(t *testing.T) {
 			assert.Equal(t, uint16(0x2), toRegisterPair(cpu.registers.h, cpu.registers.l), "HL should add BC")
 			assert.False(t, cpu.flags.Subtract, "N flag should be reset in addition")
 		})
+		t.Run("ADD HL,BC bits ordering", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0x09)
+			// Set HL = 0x1234 and BC = 0x4321.
+			cpu.registers.h, cpu.registers.l = fromRegisterPair(0x1234)
+			cpu.registers.b, cpu.registers.c = fromRegisterPair(0x4321)
+			cpu.Step()
+			expectedHL := uint16(0x1234 + 0x4321) // should equal 0x5555
+			actualHL := toRegisterPair(cpu.registers.h, cpu.registers.l)
+			if actualHL != expectedHL {
+				t.Errorf("ADD HL,BC produced 0x%04X; expected 0x%04X", actualHL, expectedHL)
+			}
+		})
 	})
 
 	t.Run("Memory", func(t *testing.T) {
@@ -290,6 +302,92 @@ func TestInstructions(t *testing.T) {
 		})
 	})
 
+	t.Run("CB Bit, Res and Set", func(t *testing.T) {
+		// BIT tests on register B
+		t.Run("BIT 0, B - bit set", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0xCB, 0x40) // BIT 0, B
+			cpu.registers.b = 0x01                // bit0 is set
+			cpu.flags.Carry = true                // initial carry value
+			cpu.Step()                            // process CB prefix
+			cpu.Step()                            // execute BIT 0, B
+			// Expected: bit is set -> Zero false, H set, N reset, Carry unchanged.
+			assert.Equal(t, false, cpu.flags.Zero, "BIT 0, B: Zero flag should be reset when bit is set")
+			assert.Equal(t, true, cpu.flags.HalfCarry, "BIT 0, B: HalfCarry flag should be set")
+			assert.Equal(t, false, cpu.flags.Subtract, "BIT 0, B: Subtract flag should be reset")
+			assert.Equal(t, true, cpu.flags.Carry, "BIT 0, B: Carry flag should remain unchanged")
+		})
+
+		t.Run("BIT 0, B - bit clear", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0xCB, 0x40) // BIT 0, B
+			cpu.registers.b = 0x00                // bit0 clear
+			cpu.flags.Carry = false
+			cpu.Step()
+			cpu.Step()
+			// Expected: bit is clear -> Zero true, H set, N reset, Carry unchanged.
+			assert.Equal(t, true, cpu.flags.Zero, "BIT 0, B: Zero flag should be set when bit is clear")
+			assert.Equal(t, true, cpu.flags.HalfCarry, "BIT 0, B: HalfCarry flag should be set")
+			assert.Equal(t, false, cpu.flags.Subtract, "BIT 0, B: Subtract flag should be reset")
+			assert.Equal(t, false, cpu.flags.Carry, "BIT 0, B: Carry flag should remain unchanged")
+		})
+
+		// BIT test on (HL)
+		t.Run("BIT 3, (HL) - bit set", func(t *testing.T) {
+			bus, cpu := setupWithOpcode(0xCB, 0x5E) // BIT 3, (HL)
+			hlAddr := uint16(0x2000)
+			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			bus.Write(hlAddr, 0x08) // 0x08 has bit3 set (0000 1000)
+			cpu.flags.Carry = false
+			cpu.Step()
+			cpu.Step()
+			// Expected: bit is set -> Zero false, H set, N reset.
+			assert.Equal(t, false, cpu.flags.Zero, "BIT 3,(HL): Zero flag should be reset when bit is set")
+			assert.Equal(t, true, cpu.flags.HalfCarry, "BIT 3,(HL): HalfCarry flag should be set")
+			assert.Equal(t, false, cpu.flags.Subtract, "BIT 3,(HL): Subtract flag should be reset")
+		})
+
+		// RES tests
+		t.Run("RES 0, B", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0xCB, 0x80) // RES 0, B
+			cpu.registers.b = 0xFF                // all bits set
+			cpu.Step()
+			cpu.Step()
+			// Expected: reset bit0 -> 0xFE.
+			assert.Equal(t, uint8(0xFE), cpu.registers.b, "RES 0, B should reset bit 0")
+		})
+
+		t.Run("RES 1, (HL)", func(t *testing.T) {
+			bus, cpu := setupWithOpcode(0xCB, 0x8E) // RES 1, (HL)
+			hlAddr := uint16(0x2000)
+			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			bus.Write(hlAddr, 0xFF) // all bits set
+			cpu.Step()
+			cpu.Step()
+			// Expected: reset bit1 -> 0xFD (1111 1101).
+			assert.Equal(t, uint8(0xFD), bus.Read(hlAddr), "RES 1,(HL) should reset bit 1")
+		})
+
+		// SET tests
+		t.Run("SET 0, B", func(t *testing.T) {
+			_, cpu := setupWithOpcode(0xCB, 0xC0) // SET 0, B
+			cpu.registers.b = 0xFE                // bit0 is clear
+			cpu.Step()
+			cpu.Step()
+			// Expected: set bit0 -> 0xFF.
+			assert.Equal(t, uint8(0xFF), cpu.registers.b, "SET 0, B should set bit 0")
+		})
+
+		t.Run("SET 1, (HL)", func(t *testing.T) {
+			bus, cpu := setupWithOpcode(0xCB, 0xCE) // SET 1, (HL)
+			hlAddr := uint16(0x2000)
+			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			bus.Write(hlAddr, 0xF9) // 0xF9: 1111 1001, bit1 clear
+			cpu.Step()
+			cpu.Step()
+			// Expected: set bit1 -> 0xFB (1111 1011).
+			assert.Equal(t, uint8(0xFB), bus.Read(hlAddr), "SET 1,(HL) should set bit 1")
+		})
+	})
+
 	t.Run("ALU", func(t *testing.T) {
 		t.Run("Instruction: Arithmetic & Logic", func(t *testing.T) {
 			// ...existing table-driven ALU tests...
@@ -434,6 +532,95 @@ func TestInstructions(t *testing.T) {
 			expectedRet := initPC + 1
 			actualRet := uint16(retHigh)<<8 | uint16(retLow)
 			assert.Equal(t, expectedRet, actualRet, "RST should push correct return address")
+		})
+
+		// New test for LD HL,SP+r8 (opcode 0xF8)
+		t.Run("Instruction: LD HL,SP+r8", func(t *testing.T) {
+			tests := []struct {
+				name       string
+				sp         uint16
+				offset     int8
+				expectedHL uint16
+				expH       bool
+				expC       bool
+			}{
+				{"no flags", 0x1000, 5, 0x1005, false, false},
+				{"half carry", 0x0015, 0x0B, 0x0020, true, false},
+				{"carry", 0x00F0, 0x14, 0x0104, false, true},
+				// Updated: For negative offset, computed via unsigned arithmetic:
+				{"negative offset", 0x1000, -3, 0x0FFD, false, false},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					_, cpu := setupWithOpcode(0xF8, uint8(tt.offset))
+					cpu.registers.sp = tt.sp
+					cpu.Step()
+					hl := toRegisterPair(cpu.registers.h, cpu.registers.l)
+					assert.Equal(t, tt.expectedHL, hl, tt.name+": HL mismatch")
+					assert.False(t, cpu.flags.Zero, tt.name+": Zero flag must be reset")
+					assert.False(t, cpu.flags.Subtract, tt.name+": Subtract flag must be reset")
+					assert.Equal(t, tt.expH, cpu.flags.HalfCarry, tt.name+": HalfCarry flag mismatch")
+					assert.Equal(t, tt.expC, cpu.flags.Carry, tt.name+": Carry flag mismatch")
+				})
+			}
+		})
+
+		t.Run("POP_AF", func(t *testing.T) {
+			t.Run("all flags set", func(t *testing.T) {
+				bus, cpu := setupWithOpcode(0xF1)
+				cpu.registers.sp = 0xFFFC
+				// Write: low byte (flags) = 0xF0 (11110000), high byte (A) = 0xAA
+				bus.Write(cpu.registers.sp, 0xF0)
+				bus.Write(cpu.registers.sp+1, 0xAA)
+				cpu.popAF()
+				assert.Equal(t, uint8(0xAA), cpu.registers.a, "POP_AF: A register mismatch")
+				assert.True(t, cpu.flags.Zero, "POP_AF: Zero flag should be set")
+				assert.True(t, cpu.flags.Subtract, "POP_AF: Subtract flag should be set")
+				assert.True(t, cpu.flags.HalfCarry, "POP_AF: HalfCarry flag should be set")
+				assert.True(t, cpu.flags.Carry, "POP_AF: Carry flag should be set")
+			})
+			t.Run("no flags set", func(t *testing.T) {
+				bus, cpu := setupWithOpcode(0xF1)
+				cpu.registers.sp = 0xFFFC
+				// Write: low byte (flags) = 0x00, high byte (A) = 0x55
+				bus.Write(cpu.registers.sp, 0x00)
+				bus.Write(cpu.registers.sp+1, 0x55)
+				cpu.popAF()
+				assert.Equal(t, uint8(0x55), cpu.registers.a, "POP_AF: A register mismatch")
+				assert.False(t, cpu.flags.Zero, "POP_AF: Zero flag should be reset")
+				assert.False(t, cpu.flags.Subtract, "POP_AF: Subtract flag should be reset")
+				assert.False(t, cpu.flags.HalfCarry, "POP_AF: HalfCarry flag should be reset")
+				assert.False(t, cpu.flags.Carry, "POP_AF: Carry flag should be reset")
+			})
+		})
+
+		t.Run("Instruction: ADD SP,r8", func(t *testing.T) {
+			tests := []struct {
+				name       string
+				sp         uint16
+				offset     int8
+				expectedSP uint16
+				expH       bool
+				expC       bool
+			}{
+				{"no flags", 0x1000, 5, 0x1005, false, false},
+				{"half carry", 0x100F, 1, 0x1010, true, false},
+				{"carry", 0x10FF, 1, 0x1100, true, true},
+				{"negative offset", 0x1000, -3, 0x0FFD, false, false},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					_, cpu := setupWithOpcode(0xE8, uint8(tt.offset))
+					cpu.registers.sp = tt.sp
+					cpu.Step()
+					assert.Equal(t, tt.expectedSP, cpu.registers.sp, tt.name+": SP mismatch")
+					// Flags: Z and N are reset; check HalfCarry and Carry.
+					assert.False(t, cpu.flags.Zero, tt.name+": Zero flag must be reset")
+					assert.False(t, cpu.flags.Subtract, tt.name+": Subtract flag must be reset")
+					assert.Equal(t, tt.expH, cpu.flags.HalfCarry, tt.name+": HalfCarry flag mismatch")
+					assert.Equal(t, tt.expC, cpu.flags.Carry, tt.name+": Carry flag mismatch")
+				})
+			}
 		})
 	})
 

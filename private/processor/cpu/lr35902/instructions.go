@@ -258,7 +258,8 @@ var instructions = [0x100]instruction{
 	}},
 	// ADD HL,SP
 	0x39: {c: 8, p: 1, op: func(c *LR35902) {
-		c.add16(&c.registers.h, &c.registers.l, uint8(c.registers.sp), uint8(c.registers.sp>>8))
+		high, low := fromRegisterPair(c.registers.sp)
+		c.add16(&c.registers.h, &c.registers.l, high, low)
 	}},
 	// LD A,(HL-)
 	0x3A: {c: 8, p: 1, op: func(c *LR35902) {
@@ -978,7 +979,7 @@ var instructions = [0x100]instruction{
 	}},
 	// ADD SP,r8
 	0xE8: {c: 16, p: 2, op: func(c *LR35902) {
-		c.registers.sp += uint16(int16(c.getImmediate8()))
+		c.addSPr8()
 	}},
 	// JP (HL)
 	0xE9: {c: 4, p: 0, op: func(c *LR35902) {
@@ -1007,9 +1008,7 @@ var instructions = [0x100]instruction{
 	}},
 	// POP AF
 	0xF1: {c: 12, p: 1, op: func(c *LR35902) {
-		reg := c.flags.Read()
-		c.pop16(&c.registers.a, &reg)
-		c.flags.Write(reg)
+		c.popAF()
 	}},
 	// LD A,(C)
 	0xF2: {c: 8, p: 1, op: func(c *LR35902) {
@@ -1036,11 +1035,12 @@ var instructions = [0x100]instruction{
 	}},
 	// LD HL,SP+r8
 	0xF8: {c: 12, p: 2, op: func(c *LR35902) {
-		c.registers.h, c.registers.l = fromRegisterPair(c.registers.sp + uint16(int16(c.getImmediate8())))
+		immediate := int8(c.getImmediate8())
+		c.loadHLSPOffset(immediate)
 	}},
 	// LD SP,HL
 	0xF9: {c: 8, p: 1, op: func(c *LR35902) {
-		c.registers.sp = toRegisterPair(c.registers.h, c.registers.l) // updated order
+		c.registers.sp = toRegisterPair(c.registers.h, c.registers.l)
 	}},
 	// LD A,(a16)
 	0xFA: {c: 16, p: 3, op: func(c *LR35902) {

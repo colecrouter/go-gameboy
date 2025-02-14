@@ -58,7 +58,7 @@ func (c *LR35902) Step() int {
 		c.ime = true
 	}
 
-	if c.registers.pc == 0x98 {
+	if mnemonic == "DEC SP" {
 		// println("Breakpoint")
 	}
 
