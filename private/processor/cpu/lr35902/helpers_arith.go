@@ -1,7 +1,5 @@
 package lr35902
 
-import "math/bits"
-
 // Arithmetic
 func (c *LR35902) add8(r *uint8, val uint8) {
 	zero := Reset
@@ -43,27 +41,33 @@ func (c *LR35902) add16(highDest, lowDest *uint8, highVal, lowVal uint8) {
 	c.setFlags(Leave, Reset, hc, carry)
 }
 func (c *LR35902) sub8(r *uint8, val uint8) {
-	zero := Reset
-	carry := Reset
-	hc := Reset
+	zeroFlag := Reset
+	carryFlag := Reset
+	halfCarryFlag := Reset
 
-	sum, car := bits.Sub(uint(*r), uint(val), 0)
-	if car > 0 {
-		carry = Set
+	// The subtraction is performed in a signed context to detect borrow.
+	diff := int16(*r) - int16(val)
+
+	if diff < 0 {
+		carryFlag = Set
+		// Wrap-around for unsigned arithmetic.
+		diff += 256
 	}
 
-	// Fix half-carry: set if lower nibble of *r is less than lower nibble of val.
+	// Check for half-carry (i.e. borrow from bit 4).
 	if (*r & 0xF) < (val & 0xF) {
-		hc = Set
+		halfCarryFlag = Set
 	}
 
-	*r = uint8(sum)
-
-	if *r == 0 {
-		zero = Set
+	result := uint8(diff)
+	if result == 0 {
+		zeroFlag = Set
 	}
 
-	c.setFlags(zero, Set, hc, carry)
+	*r = result
+
+	// In subtraction, the N flag is always set.
+	c.setFlags(zeroFlag, Set, halfCarryFlag, carryFlag)
 }
 func (c *LR35902) and8(r *uint8, val uint8) {
 	*r &= val
@@ -135,30 +139,34 @@ func (c *LR35902) addc8(r *uint8, val uint8) {
 	c.setFlags(zero, Reset, hc, carry)
 }
 func (c *LR35902) subc8(r *uint8, val uint8) {
-	zero := Reset
+	// Get the current carry bit (0 or 1). Adjust according to how your emulator stores flags.
+	carryIn := uint8(0)
+	if c.flags.Carry { // assuming you have a helper for reading the carry flag
+		carryIn = 1
+	}
+
+	// Use int16 arithmetic to account for potential borrow.
+	diff := int16(*r) - int16(val) - int16(carryIn)
 	carry := Reset
+	if diff < 0 {
+		carry = Set // Borrow occurred.
+		diff += 256 // Wrap-around for 8-bit arithmetic.
+	}
+
+	// Check for half-borrow: compare the low nibble of *r with (val + carryIn)'s low nibble.
 	hc := Reset
-
-	// Adjust val if carry flag is set
-	if c.flags.Carry {
-		val++
-	}
-
-	sum, car := bits.Sub(uint(*r), uint(val), 0)
-	if car > 0 {
-		carry = Set
-	}
-
-	// Fix half-carry: set if lower nibble of *r is less than lower nibble of val.
-	if (*r & 0xF) < (val & 0xF) {
+	if ((*r) & 0xF) < ((val & 0xF) + carryIn) {
 		hc = Set
 	}
 
-	*r = uint8(sum)
-
-	if *r == 0 {
+	// Determine the result and the Z flag.
+	result := uint8(diff)
+	zero := Reset
+	if result == 0 {
 		zero = Set
 	}
 
+	*r = result
+	// In subtraction with borrow, the N flag is always set.
 	c.setFlags(zero, Set, hc, carry)
 }

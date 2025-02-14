@@ -436,6 +436,40 @@ func TestInstructions(t *testing.T) {
 				})
 			}
 		})
+		t.Run("Instruction: SBC A,B", func(t *testing.T) {
+			// Table-driven tests for SBC A,B (opcode 0x98)
+			type sbcTest struct {
+				name         string
+				initA        uint8
+				initB        uint8
+				initCarry    bool
+				expectedA    uint8
+				expZero      bool
+				expHalfCarry bool
+				expCarry     bool
+			}
+			tests := []sbcTest{
+				{"SBC_A_B_no_borrow", 0x05, 0x03, false, 0x02, false, false, false},
+				{"SBC_A_B_with_borrow", 0x05, 0x03, true, 0x01, false, false, false},
+				{"SBC_A_B_result_zero", 0x03, 0x03, false, 0x00, true, false, false},
+				{"SBC_A_B_underflow", 0x00, 0x01, false, 0xFF, false, true, true},
+			}
+			for _, tc := range tests {
+				t.Run(tc.name, func(t *testing.T) {
+					_, cpu := setupWithOpcode(0x98) // SBC A,B opcode
+					cpu.registers.a = tc.initA
+					cpu.registers.b = tc.initB
+					cpu.flags.Carry = tc.initCarry
+					cpu.Step()
+					assert.Equal(t, tc.expectedA, cpu.registers.a, tc.name+": A value mismatch")
+					assert.Equal(t, tc.expZero, cpu.flags.Zero, tc.name+": Zero flag mismatch")
+					// For subtraction, N flag is always set.
+					assert.True(t, cpu.flags.Subtract, tc.name+": Subtract flag should be set")
+					assert.Equal(t, tc.expHalfCarry, cpu.flags.HalfCarry, tc.name+": HalfCarry flag mismatch")
+					assert.Equal(t, tc.expCarry, cpu.flags.Carry, tc.name+": Carry flag mismatch")
+				})
+			}
+		})
 	})
 
 	t.Run("Flow Control", func(t *testing.T) {
