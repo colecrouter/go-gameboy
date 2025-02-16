@@ -1,15 +1,21 @@
 package registers
 
 type Timer struct {
-	Divider uint8        // FF04
-	Counter uint8        // FF05
-	Modulo  uint8        // FF06
-	Control TimerControl // FF07
+	Divider uint8        // FF04 - DIV
+	Counter uint8        // FF05 - TIMA
+	Modulo  uint8        // FF06 - TMA
+	Control TimerControl // FF07 - TAC
 
-	totalCycles uint64
+	totalCycles    uint64
+	interruptFlags *Interrupt
+	initialized    bool
 }
 
 func (t *Timer) Read(addr uint16) uint8 {
+	if !t.initialized {
+		panic("Timer not initialized")
+	}
+
 	switch addr {
 	case 0x0:
 		return t.Divider
@@ -25,6 +31,10 @@ func (t *Timer) Read(addr uint16) uint8 {
 }
 
 func (t *Timer) Write(addr uint16, value uint8) {
+	if !t.initialized {
+		panic("Timer not initialized")
+	}
+
 	switch addr {
 	case 0x0:
 		t.Divider = 0
@@ -39,7 +49,11 @@ func (t *Timer) Write(addr uint16, value uint8) {
 	}
 }
 
-func (t *Timer) Clock(interrupt func()) {
+func (t *Timer) Clock() {
+	if !t.initialized {
+		panic("Timer not initialized")
+	}
+
 	t.totalCycles++
 	if t.totalCycles%256 == 0 {
 		t.Divider++
@@ -52,13 +66,13 @@ func (t *Timer) Clock(interrupt func()) {
 	var interval uint64
 	switch t.Control.Speed {
 	case M256:
-		interval = 256
+		interval = 1024
 	case M4:
-		interval = 4
-	case M16:
 		interval = 16
-	case M64:
+	case M16:
 		interval = 64
+	case M64:
+		interval = 256
 	}
 
 	if t.totalCycles%interval == 0 {
@@ -69,8 +83,14 @@ func (t *Timer) Clock(interrupt func()) {
 			t.Counter = t.Modulo
 
 			// Request interrupt
-			interrupt()
+			t.interruptFlags.Timer = true
 		}
 	}
 
+}
+
+func NewTimer(interrupt *Interrupt) *Timer {
+	timer := &Timer{initialized: true}
+	timer.interruptFlags = interrupt
+	return timer
 }

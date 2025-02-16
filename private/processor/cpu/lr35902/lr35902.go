@@ -17,10 +17,12 @@ type LR35902 struct {
 	flags   Flags
 	bus     *memory.Bus
 	io      *registers.Registers
+	ie      *registers.Interrupt
 	cb      bool
 	ime     bool
 	eiDelay int
 	lastPC  uint16
+	halted  bool
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -28,6 +30,29 @@ type LR35902 struct {
 func (c *LR35902) Step() int {
 	if !c.initialized {
 		panic("CPU not initialized")
+	}
+
+	// Check for interrupts
+	for i := VBlankISR; i <= JoypadISR; i++ {
+		// TODO gross
+		if c.ie.Read(0)&(1<<isrOffsets[i]) != 0 && c.io.InterruptFlag.Read(0)&(1<<isrOffsets[i]) != 0 {
+			if c.ime {
+				c.isr(i)
+
+				// Clear interrupt flag
+				c.io.InterruptFlag.Write(0, c.io.InterruptFlag.Read(0)&^(1<<isrOffsets[i]))
+			}
+
+			// Cancel HALT mode
+			c.halted = false
+		}
+	}
+
+	// Check for HALT mode
+	if c.halted {
+		// We need to return 4 cycles here so that the CPU still runs and checks for interrupts
+		// If we return 0, the process will hang, as it will continue to clock empty cycles without stopping or checking for interrupts
+		return 4
 	}
 
 	// Get instruction
@@ -38,14 +63,10 @@ func (c *LR35902) Step() int {
 	var mnemonic string
 	if c.cb {
 		instruction = cbInstructions[opcode]
+		mnemonic = getCBMnemonic(opcode)
 		c.cb = false
 	} else {
-		mnemonic = getCBMnemonic(opcode)
 		instruction = instructions[opcode]
-	}
-
-	if c.bus.Read(c.registers.pc-1) == 0xCB {
-	} else {
 		mnemonic = mnemonics[opcode]
 	}
 
@@ -54,10 +75,6 @@ func (c *LR35902) Step() int {
 	op := instruction.op
 	cycles := instruction.c
 	increment := instruction.p
-
-	if mnemonic == "RRC (HL)" {
-		// println("Breakpoint")
-	}
 
 	c.lastPC = c.registers.pc
 	if op == nil {
@@ -80,11 +97,12 @@ func (c *LR35902) Step() int {
 	return cycles
 }
 
-func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers) *LR35902 {
+func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers, ie *registers.Interrupt) *LR35902 {
 	cpu := &LR35902{initialized: true}
 
 	cpu.bus = bus
 	cpu.io = ioRegisters
+	cpu.ie = ie
 
 	// Initialize registers to default values
 	cpu.registers.b = 0x00

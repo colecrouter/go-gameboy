@@ -27,7 +27,9 @@ type GameBoy struct {
 	CPU             *lr35902.LR35902
 	PPU             *ppu.PPU
 	VRAM            *vram.VRAM
-	CartridgeReader *reader.CartridgeReader
+	CartridgeReader reader.CartridgeReader
+	IF              *registers.Interrupt
+	IE              *registers.Interrupt
 
 	done        chan struct{}
 	totalCycles int64 // added to track CPU cycles
@@ -39,15 +41,17 @@ func NewGameBoy() *GameBoy {
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
 	oamModule := &memory.OAM{}
-	gb.IO = registers.NewRegisters(oamModule, gb.CartridgeReader, func() { gb.interrupt(lr35902.SerialISR) })
-	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO)
-	gb.CartridgeReader = reader.NewCartridgeReader(&gb.IO.DisableBootROM)
+	gb.IF = &registers.Interrupt{}
+	gb.IE = &registers.Interrupt{}
+	gb.IO = registers.NewRegisters(oamModule, &gb.CartridgeReader, gb.IF)
+	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO, gb.IE)
+	gb.CartridgeReader = *reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
 	gb.done = make(chan struct{}) // initialize done channel
 
 	// gb.memoryBus.AddDevice(0x0000, 0x3FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 0
 	// gb.memoryBus.AddDevice(0x4000, 0x7FFF, &memory.Memory{Buffer: make([]byte, 0x4000)}) // ROM Bank 1-xx aka mapper
-	gb.Bus.AddDevice(0x0000, 0x7FFF, gb.CartridgeReader)
+	gb.Bus.AddDevice(0x0000, 0x7FFF, &gb.CartridgeReader)
 	gb.Bus.AddDevice(0x8000, 0x9FFF, gb.VRAM)                                      // VRAM
 	gb.Bus.AddDevice(0xA000, 0xBFFF, &memory.Memory{Buffer: make([]byte, 0x2000)}) // External RAM
 	gb.Bus.AddDevice(0xC000, 0xCFFF, &memory.Memory{Buffer: make([]byte, 0x1000)}) // WRAM
@@ -58,9 +62,9 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFEA0, 0xFEFF, &memory.Memory{Buffer: make([]byte, 0x60)}) // Unusable Memory
 	gb.Bus.AddDevice(0xFF00, 0xFF7F, gb.IO)                                      // I/O Registers
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
-	gb.Bus.AddDevice(0xFFFF, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x1)})  // Interrupt Enable Register
+	gb.Bus.AddDevice(0xFFFF, 0xFFFF, gb.IE)                                      // Interrupt Enable Register
 
-	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.interrupt)
+	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.IF)
 
 	return gb
 }
@@ -80,7 +84,7 @@ func (gb *GameBoy) Start() {
 				cycles += stepCycles
 				for i := 0; i < stepCycles; i++ {
 					// Technicially this is an issue, because Timer.Clock() should happen before CPU.Step()
-					gb.IO.Timer.Clock(func() { gb.CPU.ISR(lr35902.TimerISR) })
+					gb.IO.Timer.Clock()
 
 					gb.PPU.SystemClock()
 				}
@@ -114,8 +118,4 @@ func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {
 
 func (gb *GameBoy) ConnectSerialDevice(d registers.SerialDevice) {
 	gb.IO.Serial.Connect(d)
-}
-
-func (gb *GameBoy) interrupt(isr lr35902.ISR) {
-	gb.CPU.ISR(isr)
 }

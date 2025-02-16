@@ -2,17 +2,7 @@ package lr35902
 
 import "github.com/colecrouter/gameboy-go/private/memory/registers"
 
-func (c *LR35902) ISR(isr ISR) {
-	// If master interrupt enable is disabled, return
-	if !c.ime {
-		return
-	}
-
-	// If the interrupt is disabled, return
-	if c.io.InterruptEnable.Read()&(1<<isrOffsets[isr]) == 0 {
-		return
-	}
-
+func (c *LR35902) isr(isr ISR) {
 	// STAT interrupt is special
 	if isr == LCDSTATISR {
 		switch c.io.LCDStatus.PPUMode {

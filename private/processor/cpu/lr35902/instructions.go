@@ -521,7 +521,7 @@ var instructions = [0x100]instruction{
 	}},
 	// HALT
 	0x76: {c: 4, p: 1, op: func(c *LR35902) {
-		// NOP
+		c.halted = true
 	}},
 	// LD (HL),A
 	0x77: {c: 8, p: 1, op: func(c *LR35902) {

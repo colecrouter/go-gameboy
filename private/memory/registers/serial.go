@@ -17,13 +17,13 @@ type SerialTransfer struct {
 	Master         bool
 
 	connected SerialDevice
-	interupt  func()
+	interrupt *Interrupt
 	value     uint8
 } // 0xFF01-0xFF02
 
-func NewSerialTransfer(interupt func()) *SerialTransfer {
+func NewSerialTransfer(interupt *Interrupt) *SerialTransfer {
 	return &SerialTransfer{
-		interupt: interupt,
+		interrupt: interupt,
 	}
 }
 
@@ -80,7 +80,7 @@ func (s *SerialTransfer) transfer() {
 	s.EnableTransfer = false
 
 	// Trigger interupt
-	if s.interupt != nil {
-		s.interupt()
+	if s.interrupt != nil {
+		s.interrupt.Serial = true
 	}
 }

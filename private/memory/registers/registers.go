@@ -15,7 +15,7 @@ type Registers struct {
 	JoypadState        uint8          // 0xFF00
 	Serial             SerialTransfer // 0xFF01-0xFF02
 	Timer              Timer          // 0xFF04-0xFF07
-	Interrupts         InterruptFlags // 0xFF0F
+	InterruptFlag      *Interrupt     // 0xFF0F
 	Audio              uint32         // 0xFF10-0xFF26
 	WavePattern        uint16         // 0xFF30-0xFF3F
 	LCDControl         LCDControl     // 0xFF40
@@ -40,10 +40,6 @@ type Registers struct {
 	GBCPaletteData [8]uint8 // 0xFF68-0xFF6B
 	WRAMBank1      bool     // 0xFF70
 
-	// Interrupts
-	InterruptRequest Interrupt // 0xFFF0
-	InterruptEnable  Interrupt // 0xFFFF
-
 	// ???
 	rest [0x8A]uint8
 }
@@ -63,12 +59,14 @@ $FF68	$FF6B	CGB	BG / OBJ Palettes
 $FF70		CGB	WRAM Bank Select
 */
 
-func NewRegisters(oam *memory.OAM, cartridge *reader.CartridgeReader, serialISR func()) *Registers {
+func NewRegisters(oam *memory.OAM, cartridge *reader.CartridgeReader, ir *Interrupt) *Registers {
 	return &Registers{
-		oam:         oam,
-		cartridge:   cartridge,
-		initialized: true,
-		Serial:      *NewSerialTransfer(serialISR),
+		oam:           oam,
+		cartridge:     cartridge,
+		initialized:   true,
+		Serial:        *NewSerialTransfer(ir),
+		Timer:         *NewTimer(ir),
+		InterruptFlag: ir,
 	}
 }
 
@@ -87,7 +85,8 @@ func (r *Registers) Read(addr uint16) uint8 {
 		offset := addr - 0x04
 		return r.Timer.Read(offset)
 	case 0x0F:
-		return r.Interrupts.Read(addr)
+		offset := addr - 0x0F
+		return r.InterruptFlag.Read(offset)
 	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26:
 		offset := addr - 0x10
 		return uint8(r.Audio >> (8 * offset))
@@ -139,10 +138,6 @@ func (r *Registers) Read(addr uint16) uint8 {
 			return 1
 		}
 		return 0
-	case 0xF0:
-		return r.InterruptRequest.Read()
-	case 0xFF:
-		return r.InterruptEnable.Read()
 	default:
 		return 0
 	}
@@ -163,7 +158,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		offset := addr - 0x04
 		r.Timer.Write(offset, value)
 	case 0x0F:
-		r.Interrupts.Write(0, value)
+		r.InterruptFlag.Write(0, value)
 	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26:
 		offset := addr - 0x10
 		r.Audio = r.Audio | (uint32(value) << (8 * offset))
@@ -206,10 +201,6 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.VRAMDMA[offset] = value
 	case 0x70:
 		r.WRAMBank1 = value > 0
-	case 0xF0:
-		r.InterruptRequest.Write(value)
-	case 0xFF:
-		r.InterruptEnable.Write(value)
 	default:
 		// if addr >= 0x71 && addr <= 0xFF {
 		// 	r.rest[addr-0x71] = value

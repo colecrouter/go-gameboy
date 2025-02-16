@@ -8,11 +8,10 @@ import (
 	"github.com/colecrouter/gameboy-go/private/memory/registers"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/tile"
-	"github.com/colecrouter/gameboy-go/private/processor/cpu/lr35902"
 )
 
 type PPU struct {
-	isr              func(lr35902.ISR)
+	interrupt        *registers.Interrupt
 	vram             *vram.VRAM
 	oam              *memory.OAM
 	registers        *registers.Registers
@@ -37,9 +36,9 @@ const (
 )
 
 // NewPPU creates a new PPU instance
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, isr func(lr35902.ISR)) *PPU {
+func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie *registers.Interrupt) *PPU {
 	return &PPU{
-		isr:       isr,
+		interrupt: ie,
 		vram:      vram,
 		oam:       oam,
 		registers: registers,
@@ -66,19 +65,19 @@ func (p *PPU) SystemClock() {
 		p.registers.LCDStatus.PPUMode = registers.VBlank
 
 		if p.registers.LY == visibleLines {
-			p.isr(lr35902.VBlankISR)
+			p.interrupt.VBlank = true
 		}
 	} else {
 		switch p.lineCycleCounter {
 		case 0:
 			p.registers.LCDStatus.PPUMode = registers.OAMScan
-			p.isr(lr35902.LCDSTATISR)
+			p.interrupt.LCD = true
 		case oamScanCycles:
 			p.registers.LCDStatus.PPUMode = registers.Drawing
-			p.isr(lr35902.LCDSTATISR)
+			p.interrupt.LCD = true
 		case oamScanCycles + pixelTransferCycles:
 			p.registers.LCDStatus.PPUMode = registers.HBlank
-			p.isr(lr35902.LCDSTATISR)
+			p.interrupt.LCD = true
 		}
 	}
 
@@ -172,36 +171,36 @@ func (p *PPU) DisplayClock() {
 		}
 	}
 
-	// Draw sprite layer
-	spriteHeight := tile.TILE_SIZE
-	if p.registers.LCDControl.Sprites8x16 {
-		spriteHeight = tile.TILE_SIZE * 2
-	}
-	for i := 0; i < 40; i++ {
-		sprite := p.oam.ReadSprite(i)
+	// // Draw sprite layer
+	// spriteHeight := tile.TILE_SIZE
+	// if p.registers.LCDControl.Sprites8x16 {
+	// 	spriteHeight = tile.TILE_SIZE * 2
+	// }
+	// for i := 0; i < 40; i++ {
+	// 	sprite := p.oam.ReadSprite(i)
 
-		// Skip drawing if the sprite is off the screen
-		if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
-			continue
-		}
+	// 	// Skip drawing if the sprite is off the screen
+	// 	if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
+	// 		continue
+	// 	}
 
-		for x := 0; x < spriteHeight; x++ {
-			for y := 0; y < tile.TILE_SIZE; y++ {
-				// Get the pixel from the sprite
-				pixel := p.registers.PaletteData.Match(sprite.ReadPixel(uint8(x), uint8(y)))
+	// 	for x := 0; x < spriteHeight; x++ {
+	// 		for y := 0; y < tile.TILE_SIZE; y++ {
+	// 			// Get the pixel from the sprite
 
-				matched := p.registers.PaletteData.Match(sprite.ReadPixel(uint8(x), uint8(y)))
+	// 			pixel := sprite.ReadPixel(uint8(x), uint8(y))
+	// 			matched := p.registers.PaletteData.Match(pixel)
 
-				// Skip drawing if the pixel is transparent
-				if matched == 0 {
-					continue
-				}
+	// 			// Skip drawing if the pixel is transparent
+	// 			if matched == 0 {
+	// 				continue
+	// 			}
 
-				// Draw the pixel
-				p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[pixel])
-			}
-		}
-	}
+	// 			// Draw the pixel
+	// 			p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[matched])
+	// 		}
+	// 	}
+	// }
 
 }
 

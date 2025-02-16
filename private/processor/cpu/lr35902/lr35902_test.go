@@ -13,8 +13,9 @@ import (
 func setupWithOpcode(codes ...uint8) (*memory.Bus, *LR35902) {
 	bus := &memory.Bus{}
 	io := &registers.Registers{}
+	ie := &registers.Interrupt{}
 	bus.AddDevice(0x0000, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x10000)})
-	cpu := NewLR35902(bus, io)
+	cpu := NewLR35902(bus, io, ie)
 	// Write provided opcodes to PC sequentially.
 	pc := cpu.registers.pc
 	for i, code := range codes {
@@ -680,6 +681,25 @@ func TestInstructions(t *testing.T) {
 					assert.Equal(t, tt.expH, cpu.flags.HalfCarry, tt.name+": HalfCarry flag mismatch")
 					assert.Equal(t, tt.expC, cpu.flags.Carry, tt.name+": Carry flag mismatch")
 				})
+			}
+		})
+
+		t.Run("Instruction: EI delay", func(t *testing.T) {
+			// Set up CPU with EI (0xFB) followed by a NOP (0x00)
+			_, cpu := setupWithOpcode(0xFB, 0x00)
+			// Ensure initial IME is false.
+			cpu.ime = false
+
+			// Execute EI; IME should remain false immediately due to the EI delay.
+			cpu.Step()
+			if cpu.ime {
+				t.Error("After EI instruction, IME should not be enabled immediately")
+			}
+
+			// Execute the following NOP instruction; now IME should be enabled.
+			cpu.Step()
+			if !cpu.ime {
+				t.Error("After one instruction delay, IME should be enabled")
 			}
 		})
 	})
