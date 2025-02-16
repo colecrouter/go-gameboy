@@ -12,8 +12,8 @@ import (
 func main() {
 	gb := system.NewGameBoy()
 
-	romData, err := os.ReadFile("tetris.gb")
-	// romData, err := os.ReadFile("./tests/blargg/cpu_instrs/individual/02-interrupts.gb")
+	// romData, err := os.ReadFile("tetris.gb")
+	romData, err := os.ReadFile("./tests/blargg/interrupt_time/interrupt_time.gb")
 	if err != nil {
 		log.Fatalln(err)
 	}

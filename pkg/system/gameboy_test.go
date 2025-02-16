@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
-	"strings"
 	"testing"
 	"time"
 
@@ -76,10 +75,8 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
 }
 
-// TestBlarggOutput runs the cpu_instrs test ROMs from Blargg's test suite.
+// Updated test for Blargg CPUInstrs using the reusable runner.
 func TestGameBoy_BlarggCPUInstrs(t *testing.T) {
-	// Get all roms in ./tests/blargg/cpu_instrs/individual/*.gb
-
 	dir := "../../tests/blargg/cpu_instrs/individual/"
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -87,37 +84,15 @@ func TestGameBoy_BlarggCPUInstrs(t *testing.T) {
 	}
 
 	for _, file := range files {
-		f := file // capture file variable
-		t.Run(f.Name(), func(t *testing.T) {
+		romPath := dir + file.Name()
+		t.Run(file.Name(), func(t *testing.T) {
 			t.Parallel()
-
-			// Replace with the actual ROM path when available.
-			romData, err := os.ReadFile("../../tests/blargg/cpu_instrs/individual/" + f.Name())
-			if err != nil {
-				t.Fatal(err)
-			}
-			game := gamepak.NewGamePak(romData)
-			// Use the test setup that connects the test serial device.
-			gb, testDevice := SetupBlarggTestSystem()
-			// Insert cartridge and any setup needed.
-			gb.CartridgeReader.InsertCartridge(game)
-
-			go gb.Start()
-			defer gb.Stop()
-
-			// Use a ticker for periodic checks and a timeout channel.
-			ticker := time.NewTicker(1 * time.Second)
-			defer ticker.Stop()
-
-			for range ticker.C {
-				output := string(testDevice.output)
-				if strings.Contains(output, "Failed") {
-					t.Fatal("Test failed")
-				} else if strings.Contains(output, "Passed") {
-					t.Log("Test passed")
-					return
-				}
-			}
+			RunBlarggTestRom(t, romPath)
 		})
 	}
+}
+
+// New test for instr_timing ROM
+func TestGameBoy_BlarggInstrTiming(t *testing.T) {
+	RunBlarggTestRom(t, "../../tests/blargg/instr_timing/instr_timing.gb")
 }
