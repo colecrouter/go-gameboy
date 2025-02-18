@@ -1,14 +1,17 @@
 package registers
 
 type Timer struct {
-	Divider uint8        // FF04 - DIV
+	Divider uint16       // FF04 - DIV
 	Counter uint8        // FF05 - TIMA
 	Modulo  uint8        // FF06 - TMA
 	Control TimerControl // FF07 - TAC
 
-	totalCycles    uint64
 	interruptFlags *Interrupt
 	initialized    bool
+
+	// Synchronization state.
+	prevBit  bool
+	overflow bool
 }
 
 func (t *Timer) Read(addr uint16) uint8 {
@@ -18,7 +21,7 @@ func (t *Timer) Read(addr uint16) uint8 {
 
 	switch addr {
 	case 0x0:
-		return t.Divider
+		return uint8(t.Divider >> 8)
 	case 0x1:
 		return t.Counter
 	case 0x2:
@@ -37,60 +40,115 @@ func (t *Timer) Write(addr uint16, value uint8) {
 
 	switch addr {
 	case 0x0:
+		// DIV is reset to 0 when written to.
 		t.Divider = 0
 	case 0x1:
+		// If an overflow is pending, ignore the write so that the reload occurs.
+		if t.overflow {
+			return
+		}
 		t.Counter = value
 	case 0x2:
 		t.Modulo = value
 	case 0x3:
+		// If TAC speed is changed, reset the falling edge detection.
+		if t.Control.Speed != Increment(value&0x3) {
+			t.prevBit = false
+		}
+
 		t.Control.Write(0, value)
 	default:
 		panic("Invalid address")
 	}
 }
 
-func (t *Timer) Clock() {
+func (t *Timer) MClock() {
 	if !t.initialized {
 		panic("Timer not initialized")
 	}
 
-	t.totalCycles++
-	if t.totalCycles%256 == 0 {
-		t.Divider++
+	// Check for TIMA overflow.
+	// There's a 1 cycle delay between TIMA overflow and resetting it to TMA.
+	// So, we'll check for overflow first, then increment TIMA.
+	// This has the bonus of overwriting any written value to TIMA, which is how the hardware works.
+	if t.overflow {
+		t.Counter = t.Modulo
+		t.interruptFlags.Timer = true
+		t.overflow = false
 	}
 
+	// Always increment DIV
+	t.Divider++
+
+	// Check if timer is enabled.
 	if !t.Control.Enabled {
 		return
 	}
 
-	var interval uint64
+	// Check for falling edge on selected bit.
+	old := t.Counter
+	offset := uint16(0)
 	switch t.Control.Speed {
 	case M256:
-		interval = 1024
+		offset = 9
 	case M4:
-		interval = 16
+		offset = 1
 	case M16:
-		interval = 64
+		offset = 3
 	case M64:
-		interval = 256
+		offset = 5
 	}
-
-	if t.totalCycles%interval == 0 {
+	bit := (t.Divider >> offset) & 1
+	if t.prevBit && bit == 0 {
 		t.Counter++
-
-		// Check for overflow
-		if t.Counter == 0 {
-			t.Counter = t.Modulo
-
-			// Request interrupt
-			t.interruptFlags.Timer = true
-		}
 	}
+	t.prevBit = bit != 0
 
+	// Check for TIMA overflow.
+	if t.Counter == 0 && old == 0xFF {
+		t.overflow = true
+	}
 }
 
 func NewTimer(interrupt *Interrupt) *Timer {
 	timer := &Timer{initialized: true}
 	timer.interruptFlags = interrupt
 	return timer
+}
+
+type Increment uint8
+
+const (
+	M256 Increment = 0 // 256 M-cycles, 1024 T-cycles
+	M4   Increment = 1 // 4 M-cycles, 16 T-cycles
+	M16  Increment = 2 // 16 M-cycles, 64 T-cycles
+	M64  Increment = 3 // 64 M-cycles, 256 T-cycles
+)
+
+type TimerControl struct {
+	Speed   Increment
+	Enabled bool
+}
+
+func (t *TimerControl) Read(addr uint16) uint8 {
+	if addr != 0 {
+		panic("Invalid address")
+	}
+
+	val := uint8(0)
+	if t.Enabled {
+		val |= 1 << 2
+	}
+	val |= uint8(t.Speed)
+	return val
+}
+
+func (t *TimerControl) Write(addr uint16, value uint8) {
+	if addr != 0 {
+		panic("Invalid address")
+	}
+
+	// Only the lower 3 bits are writable.
+	t.Enabled = value&(1<<2) != 0
+	t.Speed = Increment(value & 0x3)
 }

@@ -32,7 +32,7 @@ type GameBoy struct {
 	IE              *registers.Interrupt
 
 	done        chan struct{}
-	totalCycles int64 // added to track CPU cycles
+	totalCycles uint64 // added to track CPU cycles
 	FastMode    bool
 }
 
@@ -80,13 +80,16 @@ func (gb *GameBoy) Start() {
 			cycles := 0
 			for cycles < TARGET_CYCLES_PER_FRAME {
 				stepCycles := gb.CPU.Step()
-				gb.totalCycles += int64(stepCycles)
+				gb.totalCycles += uint64(stepCycles)
 				cycles += stepCycles
 				for i := 0; i < stepCycles; i++ {
-					// Technicially this is an issue, because Timer.Clock() should happen before CPU.Step()
-					gb.IO.Timer.Clock()
 
 					gb.PPU.SystemClock()
+				}
+
+				for i := 0; i < stepCycles/4; i++ {
+					// Technicially this is an issue, because Timer.Clock() should happen before CPU.Step()
+					gb.IO.Timer.MClock()
 				}
 			}
 		}

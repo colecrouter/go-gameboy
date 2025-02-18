@@ -1063,7 +1063,7 @@ var instructions = [0x100]instruction{
 		c.cp8(c.registers.a, c.getImmediate8())
 	}},
 	// RST 38H
-	0xFF: {c: 4, p: 0, op: func(c *LR35902) {
+	0xFF: {c: 16, p: 0, op: func(c *LR35902) {
 		c.rst(0x38)
 	}},
 }
