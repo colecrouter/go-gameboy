@@ -10,9 +10,9 @@ import (
 // LR35902 is the original GameBoy CPU
 type LR35902 struct {
 	initialized bool
-	registers   struct {
+	Registers   struct {
 		a, b, c, d, e, h, l uint8
-		sp, pc              uint16
+		sp, PC              uint16
 	}
 	flags   Flags
 	bus     *memory.Bus
@@ -56,7 +56,7 @@ func (c *LR35902) Step() int {
 	}
 
 	// Get instruction
-	opcode := c.bus.Read(c.registers.pc)
+	opcode := c.bus.Read(c.Registers.PC)
 
 	// Run instruction
 	var instruction instruction
@@ -70,19 +70,23 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
+	if c.Registers.PC == 0xc2f6 {
+		fmt.Printf("")
+	}
+
 	_ = mnemonic
 
 	op := instruction.op
 	cycles := instruction.c
 	increment := instruction.p
 
-	c.lastPC = c.registers.pc
+	c.lastPC = c.Registers.PC
 	if op == nil {
 		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
-		c.registers.pc++
+		c.Registers.PC++
 	} else {
 		op(c)
-		c.registers.pc += uint16(increment)
+		c.Registers.PC += uint16(increment)
 	}
 
 	// Delay EI effect: Decrement counter at the very end of the instruction.
@@ -105,20 +109,16 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers, ie *registers
 	cpu.ie = ie
 
 	// Initialize registers to default values
-	cpu.registers.b = 0x00
-	cpu.registers.c = 0x13
-	cpu.registers.d = 0x00
-	cpu.registers.e = 0xD8
-	cpu.registers.h = 0x01
-	cpu.registers.l = 0x4D
-	cpu.registers.a = 0x01
+	cpu.Registers.b = 0x00
+	cpu.Registers.c = 0x13
+	cpu.Registers.d = 0x00
+	cpu.Registers.e = 0xD8
+	cpu.Registers.h = 0x01
+	cpu.Registers.l = 0x4D
+	cpu.Registers.a = 0x01
 
 	// Initialize flags to default values
 	cpu.flags.Write(0xB0)
 
 	return cpu
-}
-
-func (c *LR35902) PC() uint16 {
-	return c.registers.pc
 }

@@ -3,57 +3,57 @@ package lr35902
 // Jump
 func (c *LR35902) jump(addr uint16, condition bool) {
 	if condition {
-		c.registers.pc = addr
+		c.Registers.PC = addr
 		return
 	}
 
-	c.registers.pc += 3
+	c.Registers.PC += 3
 }
 func (c *LR35902) jumpRelative(offset int8, condition bool) {
 	if condition {
-		c.registers.pc = uint16(int32(c.registers.pc) + 2 + int32(offset))
+		c.Registers.PC = uint16(int32(c.Registers.PC) + 2 + int32(offset))
 		return
 	}
 
-	c.registers.pc += 2
+	c.Registers.PC += 2
 }
 
 // Subroutines
 func (c *LR35902) ret(condition bool) {
 	if !condition {
-		c.registers.pc += 1
+		c.Registers.PC += 1
 		return
 	}
 
 	// Pop the return address in little endian order.
-	high, low := c.bus.Read16(c.registers.sp)
-	c.registers.sp += 2
+	high, low := c.bus.Read16(c.Registers.sp)
+	c.Registers.sp += 2
 
 	addr := toRegisterPair(high, low)
-	c.registers.pc = addr // Assign popped address directly
+	c.Registers.PC = addr // Assign popped address directly
 }
 
 func (c *LR35902) call(addr uint16, condition bool) {
 	if !condition {
-		c.registers.pc += 3
+		c.Registers.PC += 3
 		return
 	}
 
-	retAddr := c.registers.pc + 3
+	retAddr := c.Registers.PC + 3
 
 	// Decrement SP by 2 and push return address using Write16.
-	c.registers.sp -= 2
-	c.bus.Write16(c.registers.sp, retAddr)
+	c.Registers.sp -= 2
+	c.bus.Write16(c.Registers.sp, retAddr)
 
-	c.registers.pc = addr
+	c.Registers.PC = addr
 }
 
 func (c *LR35902) rst(addr uint16) {
 	// For RST, instruction size is 1 byte.
-	retAddr := c.registers.pc + 1
+	retAddr := c.Registers.PC + 1
 
-	c.registers.sp -= 2
-	c.bus.Write16(c.registers.sp, retAddr)
+	c.Registers.sp -= 2
+	c.bus.Write16(c.Registers.sp, retAddr)
 
-	c.registers.pc = addr
+	c.Registers.PC = addr
 }

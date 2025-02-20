@@ -17,7 +17,7 @@ func setupWithOpcode(codes ...uint8) (*memory.Bus, *LR35902) {
 	bus.AddDevice(0x0000, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x10000)})
 	cpu := NewLR35902(bus, io, ie)
 	// Write provided opcodes to PC sequentially.
-	pc := cpu.registers.pc
+	pc := cpu.Registers.PC
 	for i, code := range codes {
 		bus.Write(pc+uint16(i), code)
 	}
@@ -28,16 +28,16 @@ func TestInstructions(t *testing.T) {
 	t.Run("Basic", func(t *testing.T) {
 		t.Run("Instruction: NOP", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x00)
-			initPC := cpu.registers.pc
+			initPC := cpu.Registers.PC
 			cpu.Step()
-			assert.Equal(t, initPC+1, cpu.registers.pc, "NOP should increment PC by 1")
+			assert.Equal(t, initPC+1, cpu.Registers.PC, "NOP should increment PC by 1")
 		})
 
 		t.Run("Instruction: LD_BC_d16", func(t *testing.T) {
 			// Pass opcode and immediate 16-bit little-endian bytes.
 			_, cpu := setupWithOpcode(0x01, 0x42, 0x24)
 			cpu.Step()
-			assert.Equal(t, uint16(0x2442), toRegisterPair(cpu.registers.b, cpu.registers.c), "BC should load immediate 16-bit value")
+			assert.Equal(t, uint16(0x2442), toRegisterPair(cpu.Registers.b, cpu.Registers.c), "BC should load immediate 16-bit value")
 		})
 	})
 
@@ -46,21 +46,21 @@ func TestInstructions(t *testing.T) {
 			{
 				_, cpu := setupWithOpcode(0x06, 0x42)
 				cpu.Step()
-				assert.Equal(t, uint8(0x42), cpu.registers.b, "B should load immediate 8-bit value")
+				assert.Equal(t, uint8(0x42), cpu.Registers.b, "B should load immediate 8-bit value")
 			}
 			{
 				_, cpu := setupWithOpcode(0x0E, 0x55)
 				cpu.Step()
-				assert.Equal(t, uint8(0x55), cpu.registers.c, "C should load immediate 8-bit value")
+				assert.Equal(t, uint8(0x55), cpu.Registers.c, "C should load immediate 8-bit value")
 			}
 		})
 		// Example for an operation test:
 		t.Run("Operation: INC B", func(t *testing.T) {
 			{
 				_, cpu := setupWithOpcode(0x04)
-				cpu.registers.b = 1
+				cpu.Registers.b = 1
 				cpu.Step()
-				assert.Equal(t, uint8(2), cpu.registers.b, "B should increment by 1")
+				assert.Equal(t, uint8(2), cpu.Registers.b, "B should increment by 1")
 				assert.False(t, cpu.flags.Zero, "Z flag should be reset on INC")
 				assert.False(t, cpu.flags.Subtract, "N flag should be reset on INC")
 				assert.False(t, cpu.flags.HalfCarry, "H flag should be reset on INC")
@@ -80,9 +80,9 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range decBTests {
 				t.Run(fmt.Sprintf("DEC_B_%s", tt.name), func(t *testing.T) {
 					_, cpu := setupWithOpcode(0x05)
-					cpu.registers.b = tt.initVal
+					cpu.Registers.b = tt.initVal
 					cpu.Step()
-					assert.Equal(t, tt.expResult, cpu.registers.b, "DEC B did not produce expected value")
+					assert.Equal(t, tt.expResult, cpu.Registers.b, "DEC B did not produce expected value")
 					assert.Equal(t, tt.expZero, cpu.flags.Zero, "Zero flag mismatch on DEC B")
 					assert.True(t, cpu.flags.Subtract, "N flag should be set on DEC")
 				})
@@ -94,9 +94,9 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: INC/DEC BC", func(t *testing.T) {
 			{
 				_, cpu := setupWithOpcode(0x03)
-				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x01)
+				cpu.Registers.b, cpu.Registers.c = fromRegisterPair(0x01)
 				cpu.Step()
-				assert.Equal(t, uint16(2), toRegisterPair(cpu.registers.b, cpu.registers.c), "BC should increment by 1")
+				assert.Equal(t, uint16(2), toRegisterPair(cpu.Registers.b, cpu.Registers.c), "BC should increment by 1")
 			}
 			decBCTests := []struct {
 				name      string
@@ -109,29 +109,29 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range decBCTests {
 				t.Run(fmt.Sprintf("DEC_BC_%s", tt.name), func(t *testing.T) {
 					_, cpu := setupWithOpcode(0x0B)
-					cpu.registers.b, cpu.registers.c = fromRegisterPair(tt.initBC)
+					cpu.Registers.b, cpu.Registers.c = fromRegisterPair(tt.initBC)
 					cpu.Step()
-					res := toRegisterPair(cpu.registers.b, cpu.registers.c)
+					res := toRegisterPair(cpu.Registers.b, cpu.Registers.c)
 					assert.Equal(t, tt.expResult, res, "DEC BC did not produce expected value")
 				})
 			}
 		})
 		t.Run("Operation: ADD HL,BC", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x09)
-			cpu.registers.h, cpu.registers.l = fromRegisterPair(0x1)
-			cpu.registers.b, cpu.registers.c = fromRegisterPair(0x1)
+			cpu.Registers.h, cpu.Registers.l = fromRegisterPair(0x1)
+			cpu.Registers.b, cpu.Registers.c = fromRegisterPair(0x1)
 			cpu.Step()
-			assert.Equal(t, uint16(0x2), toRegisterPair(cpu.registers.h, cpu.registers.l), "HL should add BC")
+			assert.Equal(t, uint16(0x2), toRegisterPair(cpu.Registers.h, cpu.Registers.l), "HL should add BC")
 			assert.False(t, cpu.flags.Subtract, "N flag should be reset in addition")
 		})
 		t.Run("ADD HL,BC bits ordering", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x09)
 			// Set HL = 0x1234 and BC = 0x4321.
-			cpu.registers.h, cpu.registers.l = fromRegisterPair(0x1234)
-			cpu.registers.b, cpu.registers.c = fromRegisterPair(0x4321)
+			cpu.Registers.h, cpu.Registers.l = fromRegisterPair(0x1234)
+			cpu.Registers.b, cpu.Registers.c = fromRegisterPair(0x4321)
 			cpu.Step()
 			expectedHL := uint16(0x1234 + 0x4321) // should equal 0x5555
-			actualHL := toRegisterPair(cpu.registers.h, cpu.registers.l)
+			actualHL := toRegisterPair(cpu.Registers.h, cpu.Registers.l)
 			if actualHL != expectedHL {
 				t.Errorf("ADD HL,BC produced 0x%04X; expected 0x%04X", actualHL, expectedHL)
 			}
@@ -142,22 +142,22 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: Address Operations", func(t *testing.T) {
 			t.Run("LD_A_from_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x02)
-				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x01)
-				cpu.registers.a = 0xAA
+				cpu.Registers.b, cpu.Registers.c = fromRegisterPair(0x01)
+				cpu.Registers.a = 0xAA
 				cpu.Step()
 				assert.Equal(t, uint8(0xAA), bus.Read(0x0001), "Memory at address BC should be loaded with A")
 			})
 			t.Run("LD_A_from_a16", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x0A)
-				cpu.registers.b = 0x01
-				cpu.registers.c = 0x00
+				cpu.Registers.b = 0x01
+				cpu.Registers.c = 0x00
 				bus.Write(0x100, 0xBB)
 				cpu.Step()
-				assert.Equal(t, uint8(0xBB), cpu.registers.a, "A should load value from memory at address BC")
+				assert.Equal(t, uint8(0xBB), cpu.Registers.a, "A should load value from memory at address BC")
 			})
 			t.Run("LD_a16_from_A", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x08, 0x0B, 0x00)
-				cpu.registers.sp = 0x1234
+				cpu.Registers.sp = 0x1234
 				cpu.Step()
 				assert.Equal(t, uint8(0x34), bus.Read(0x0B), "Memory low should be SP's low byte")
 				assert.Equal(t, uint8(0x12), bus.Read(0x0C), "Memory high should be SP's high byte")
@@ -168,17 +168,17 @@ func TestInstructions(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xFA)
 				addr := uint16(0x2000)
 				bus.Write(addr, 0x7F)
-				bus.Write(cpu.registers.pc+1, uint8(addr&0xFF))
-				bus.Write(cpu.registers.pc+2, uint8(addr>>8))
+				bus.Write(cpu.Registers.PC+1, uint8(addr&0xFF))
+				bus.Write(cpu.Registers.PC+2, uint8(addr>>8))
 				cpu.Step()
-				assert.Equal(t, uint8(0x7F), cpu.registers.a, "LD A,(a16) should load value from memory")
+				assert.Equal(t, uint8(0x7F), cpu.Registers.a, "LD A,(a16) should load value from memory")
 			})
 			t.Run("LD_a16_from_A", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xEA)
 				addr := uint16(0x3000)
-				cpu.registers.a = 0x3C
-				bus.Write(cpu.registers.pc+1, uint8(addr&0xFF))
-				bus.Write(cpu.registers.pc+2, uint8(addr>>8))
+				cpu.Registers.a = 0x3C
+				bus.Write(cpu.Registers.PC+1, uint8(addr&0xFF))
+				bus.Write(cpu.Registers.PC+2, uint8(addr>>8))
 				cpu.Step()
 				assert.Equal(t, uint8(0x3C), bus.Read(addr), "LD (a16),A should store A into memory")
 			})
@@ -187,16 +187,16 @@ func TestInstructions(t *testing.T) {
 				offset := uint8(0x20)
 				addr := uint16(0xFF00) + uint16(offset)
 				bus.Write(addr, 0x99)
-				bus.Write(cpu.registers.pc+1, offset)
+				bus.Write(cpu.Registers.PC+1, offset)
 				cpu.Step()
-				assert.Equal(t, uint8(0x99), cpu.registers.a, "LDH A,(n) should load value from 0xFF00+n")
+				assert.Equal(t, uint8(0x99), cpu.Registers.a, "LDH A,(n) should load value from 0xFF00+n")
 			})
 			t.Run("LDH_n_from_A", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xE0)
 				offset := uint8(0x30)
-				cpu.registers.a = 0xAB
+				cpu.Registers.a = 0xAB
 				addr := uint16(0xFF00) + uint16(offset)
-				bus.Write(cpu.registers.pc+1, offset)
+				bus.Write(cpu.Registers.PC+1, offset)
 				cpu.Step()
 				assert.Equal(t, uint8(0xAB), bus.Read(addr), "LDH (n),A should store A into memory at 0xFF00+n")
 			})
@@ -206,32 +206,32 @@ func TestInstructions(t *testing.T) {
 	t.Run("Rotation", func(t *testing.T) {
 		t.Run("Instruction: RLCA", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x07)
-			cpu.registers.a = 0x80
+			cpu.Registers.a = 0x80
 			cpu.Step()
-			assert.Equal(t, uint8(0x01), cpu.registers.a, "A should rotate left (RLCA)")
+			assert.Equal(t, uint8(0x01), cpu.Registers.a, "A should rotate left (RLCA)")
 			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RLCA")
 		})
 		t.Run("Instruction: RRCA", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x0F)
-			cpu.registers.a = 0x01
+			cpu.Registers.a = 0x01
 			cpu.Step()
-			assert.Equal(t, uint8(0x80), cpu.registers.a, "A should rotate right (RRCA)")
+			assert.Equal(t, uint8(0x80), cpu.Registers.a, "A should rotate right (RRCA)")
 			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RRCA")
 		})
 		t.Run("Instruction: RLA", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x17)
-			cpu.registers.a = 0x80
+			cpu.Registers.a = 0x80
 			cpu.flags.Carry = true
 			cpu.Step()
-			assert.Equal(t, uint8(0x01), cpu.registers.a, "A should rotate left (RLA)")
+			assert.Equal(t, uint8(0x01), cpu.Registers.a, "A should rotate left (RLA)")
 			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RLA")
 		})
 		t.Run("Instruction: RRA", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x1F)
-			cpu.registers.a = 0x01
+			cpu.Registers.a = 0x01
 			cpu.flags.Carry = true
 			cpu.Step()
-			assert.Equal(t, uint8(0x80), cpu.registers.a, "A should rotate right (RRA)")
+			assert.Equal(t, uint8(0x80), cpu.Registers.a, "A should rotate right (RRA)")
 			// Updated: Carry flag should remain true after RRA.
 			assert.True(t, cpu.flags.Carry, "Carry flag should be set by RRA")
 		})
@@ -239,46 +239,46 @@ func TestInstructions(t *testing.T) {
 		t.Run("CB Rotation", func(t *testing.T) {
 			t.Run("Instruction: RLC_B", func(t *testing.T) {
 				_, cpu := setupWithOpcode(0xCB, 0x00)
-				cpu.registers.b = 0x80 // 10000000
+				cpu.Registers.b = 0x80 // 10000000
 				cpu.Step()
 				cpu.Step()
-				assert.Equal(t, uint8(0x01), cpu.registers.b, "RLC_B should rotate B left, result 0x01")
+				assert.Equal(t, uint8(0x01), cpu.Registers.b, "RLC_B should rotate B left, result 0x01")
 				assert.True(t, cpu.flags.Carry, "RLC_B should set Carry flag")
 			})
 
 			t.Run("Instruction: RRC_B", func(t *testing.T) {
 				_, cpu := setupWithOpcode(0xCB, 0x08)
-				cpu.registers.b = 0x01 // 00000001
+				cpu.Registers.b = 0x01 // 00000001
 				cpu.Step()
 				cpu.Step()
-				assert.Equal(t, uint8(0x80), cpu.registers.b, "RRC_B should rotate B right, result 0x80")
+				assert.Equal(t, uint8(0x80), cpu.Registers.b, "RRC_B should rotate B right, result 0x80")
 				assert.True(t, cpu.flags.Carry, "RRC_B should set Carry flag")
 			})
 
 			t.Run("Instruction: RL_B", func(t *testing.T) {
 				_, cpu := setupWithOpcode(0xCB, 0x10)
-				cpu.registers.b = 0x80 // 10000000
+				cpu.Registers.b = 0x80 // 10000000
 				cpu.flags.Carry = true // initial carry is set
 				cpu.Step()
 				cpu.Step()
-				assert.Equal(t, uint8(0x01), cpu.registers.b, "RL_B should rotate B left through carry, result 0x01")
+				assert.Equal(t, uint8(0x01), cpu.Registers.b, "RL_B should rotate B left through carry, result 0x01")
 				assert.True(t, cpu.flags.Carry, "RL_B should set Carry flag")
 			})
 
 			t.Run("Instruction: RR_B", func(t *testing.T) {
 				_, cpu := setupWithOpcode(0xCB, 0x18)
-				cpu.registers.b = 0x01 // 00000001
+				cpu.Registers.b = 0x01 // 00000001
 				cpu.flags.Carry = true // initial carry is set
 				cpu.Step()
 				cpu.Step()
-				assert.Equal(t, uint8(0x80), cpu.registers.b, "RR_B should rotate B right through carry, result 0x80")
+				assert.Equal(t, uint8(0x80), cpu.Registers.b, "RR_B should rotate B right through carry, result 0x80")
 				assert.True(t, cpu.flags.Carry, "RR_B should set Carry flag")
 			})
 
 			t.Run("Instruction: RLC_(HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x06)
 				hlAddr := uint16(0x2000)
-				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 				// Write initial value: 0x85 (10000101)
 				bus.Write(hlAddr, 0x85)
 				cpu.Step()
@@ -291,7 +291,7 @@ func TestInstructions(t *testing.T) {
 			t.Run("Instruction: RRC_(HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x0E)
 				hlAddr := uint16(0x2000)
-				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 				// Write initial value: 0x01 (00000001)
 				bus.Write(hlAddr, 0x01)
 				cpu.Step()
@@ -303,10 +303,10 @@ func TestInstructions(t *testing.T) {
 
 			t.Run("Instruction: SRL A", func(t *testing.T) {
 				_, cpu := setupWithOpcode(0xCB, 0x3F) // CB prefix, SRL A opcode
-				cpu.registers.a = 0x02                // binary: 0000 0010
+				cpu.Registers.a = 0x02                // binary: 0000 0010
 				cpu.Step()                            // process CB prefix
 				cpu.Step()                            // execute SRL A
-				assert.Equal(t, uint8(0x01), cpu.registers.a, "SRL A: A should be shifted right logically")
+				assert.Equal(t, uint8(0x01), cpu.Registers.a, "SRL A: A should be shifted right logically")
 				assert.False(t, cpu.flags.Zero, "SRL A: Zero flag should be false")
 				assert.False(t, cpu.flags.HalfCarry, "SRL A: HalfCarry flag should be false")
 				assert.False(t, cpu.flags.Subtract, "SRL A: Subtract flag should be false")
@@ -316,7 +316,7 @@ func TestInstructions(t *testing.T) {
 			t.Run("Instruction: SRL (HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x3E) // CB prefix, SRL (HL) opcode
 				hlAddr := uint16(0x2000)
-				cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+				cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 				bus.Write(hlAddr, 0x03) // binary: 0000 0011; expected result: 0x01 with Carry true
 				cpu.Step()              // process CB prefix
 				cpu.Step()              // execute SRL (HL)
@@ -333,7 +333,7 @@ func TestInstructions(t *testing.T) {
 		// BIT tests on register B
 		t.Run("BIT 0, B - bit set", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xCB, 0x40) // BIT 0, B
-			cpu.registers.b = 0x01                // bit0 is set
+			cpu.Registers.b = 0x01                // bit0 is set
 			cpu.flags.Carry = true                // initial carry value
 			cpu.Step()                            // process CB prefix
 			cpu.Step()                            // execute BIT 0, B
@@ -346,7 +346,7 @@ func TestInstructions(t *testing.T) {
 
 		t.Run("BIT 0, B - bit clear", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xCB, 0x40) // BIT 0, B
-			cpu.registers.b = 0x00                // bit0 clear
+			cpu.Registers.b = 0x00                // bit0 clear
 			cpu.flags.Carry = false
 			cpu.Step()
 			cpu.Step()
@@ -361,7 +361,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("BIT 3, (HL) - bit set", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0x5E) // BIT 3, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0x08) // 0x08 has bit3 set (0000 1000)
 			cpu.flags.Carry = false
 			cpu.Step()
@@ -375,17 +375,17 @@ func TestInstructions(t *testing.T) {
 		// RES tests
 		t.Run("RES 0, B", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xCB, 0x80) // RES 0, B
-			cpu.registers.b = 0xFF                // all bits set
+			cpu.Registers.b = 0xFF                // all bits set
 			cpu.Step()
 			cpu.Step()
 			// Expected: reset bit0 -> 0xFE.
-			assert.Equal(t, uint8(0xFE), cpu.registers.b, "RES 0, B should reset bit 0")
+			assert.Equal(t, uint8(0xFE), cpu.Registers.b, "RES 0, B should reset bit 0")
 		})
 
 		t.Run("RES 1, (HL)", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0x8E) // RES 1, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0xFF) // all bits set
 			cpu.Step()
 			cpu.Step()
@@ -396,17 +396,17 @@ func TestInstructions(t *testing.T) {
 		// SET tests
 		t.Run("SET 0, B", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xCB, 0xC0) // SET 0, B
-			cpu.registers.b = 0xFE                // bit0 is clear
+			cpu.Registers.b = 0xFE                // bit0 is clear
 			cpu.Step()
 			cpu.Step()
 			// Expected: set bit0 -> 0xFF.
-			assert.Equal(t, uint8(0xFF), cpu.registers.b, "SET 0, B should set bit 0")
+			assert.Equal(t, uint8(0xFF), cpu.Registers.b, "SET 0, B should set bit 0")
 		})
 
 		t.Run("SET 1, (HL)", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0xCE) // SET 1, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.registers.h, cpu.registers.l = fromRegisterPair(hlAddr)
+			cpu.Registers.h, cpu.Registers.l = fromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0xF9) // 0xF9: 1111 1001, bit1 clear
 			cpu.Step()
 			cpu.Step()
@@ -447,14 +447,14 @@ func TestInstructions(t *testing.T) {
 			for _, tc := range tests {
 				t.Run(tc.name, func(t *testing.T) {
 					_, cpu := setupWithOpcode(tc.opcode)
-					cpu.registers.a = tc.initA
-					cpu.registers.b = tc.initB
+					cpu.Registers.a = tc.initA
+					cpu.Registers.b = tc.initB
 					cpu.flags.Carry = tc.initCarry
 					cpu.Step()
 					if !tc.checkAUnchanged {
-						assert.Equal(t, tc.expectedA, cpu.registers.a, tc.name+": A value")
+						assert.Equal(t, tc.expectedA, cpu.Registers.a, tc.name+": A value")
 					} else {
-						assert.Equal(t, tc.initA, cpu.registers.a, tc.name+": A should remain unchanged")
+						assert.Equal(t, tc.initA, cpu.Registers.a, tc.name+": A should remain unchanged")
 					}
 					assert.Equal(t, tc.expectedFlags.zero, cpu.flags.Zero, tc.name+": Zero flag")
 					assert.Equal(t, tc.expectedFlags.carry, cpu.flags.Carry, tc.name+": Carry flag")
@@ -484,11 +484,11 @@ func TestInstructions(t *testing.T) {
 			for _, tc := range tests {
 				t.Run(tc.name, func(t *testing.T) {
 					_, cpu := setupWithOpcode(0x98) // SBC A,B opcode
-					cpu.registers.a = tc.initA
-					cpu.registers.b = tc.initB
+					cpu.Registers.a = tc.initA
+					cpu.Registers.b = tc.initB
 					cpu.flags.Carry = tc.initCarry
 					cpu.Step()
-					assert.Equal(t, tc.expectedA, cpu.registers.a, tc.name+": A value mismatch")
+					assert.Equal(t, tc.expectedA, cpu.Registers.a, tc.name+": A value mismatch")
 					assert.Equal(t, tc.expZero, cpu.flags.Zero, tc.name+": Zero flag mismatch")
 					// For subtraction, N flag is always set.
 					assert.True(t, cpu.flags.Subtract, tc.name+": Subtract flag should be set")
@@ -503,37 +503,37 @@ func TestInstructions(t *testing.T) {
 		t.Run("Operation: PUSH/POP", func(t *testing.T) {
 			t.Run("PUSH_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xC5)
-				cpu.registers.b, cpu.registers.c = fromRegisterPair(0x1234)
-				cpu.registers.sp = 0xFFFE
+				cpu.Registers.b, cpu.Registers.c = fromRegisterPair(0x1234)
+				cpu.Registers.sp = 0xFFFE
 				cpu.Step()
-				assert.Equal(t, uint16(0xFFFC), cpu.registers.sp, "SP should decrease by 2 after PUSH")
-				high := bus.Read(cpu.registers.sp + 1)
-				low := bus.Read(cpu.registers.sp)
+				assert.Equal(t, uint16(0xFFFC), cpu.Registers.sp, "SP should decrease by 2 after PUSH")
+				high := bus.Read(cpu.Registers.sp + 1)
+				low := bus.Read(cpu.Registers.sp)
 				assert.Equal(t, uint8(0x12), high, "PUSH_BC: high byte")
 				assert.Equal(t, uint8(0x34), low, "PUSH_BC: low byte")
 			})
 
 			t.Run("POP_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xC1)
-				cpu.registers.sp = 0xFFFC
-				bus.Write(cpu.registers.sp, 0x9A)
-				bus.Write(cpu.registers.sp+1, 0x78)
+				cpu.Registers.sp = 0xFFFC
+				bus.Write(cpu.Registers.sp, 0x9A)
+				bus.Write(cpu.Registers.sp+1, 0x78)
 				cpu.Step()
-				assert.Equal(t, uint16(0xFFFE), cpu.registers.sp, "SP should increase by 2 after POP")
-				assert.Equal(t, uint8(0x78), cpu.registers.b, "POP_BC: register B")
-				assert.Equal(t, uint8(0x9A), cpu.registers.c, "POP_BC: register C")
+				assert.Equal(t, uint16(0xFFFE), cpu.Registers.sp, "SP should increase by 2 after POP")
+				assert.Equal(t, uint8(0x78), cpu.Registers.b, "POP_BC: register B")
+				assert.Equal(t, uint8(0x9A), cpu.Registers.c, "POP_BC: register C")
 			})
 		})
 
 		t.Run("Instruction: CALL", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCD, 0x34, 0x12)
-			cpu.registers.sp = 0xFFFE
-			initPC := cpu.registers.pc
+			cpu.Registers.sp = 0xFFFE
+			initPC := cpu.Registers.PC
 			cpu.Step()
-			assert.Equal(t, uint16(0x1234), cpu.registers.pc, "CALL should jump to target address")
-			assert.Equal(t, uint16(0xFFFC), cpu.registers.sp, "CALL should push return address onto stack")
-			retLow := bus.Read(cpu.registers.sp)
-			retHigh := bus.Read(cpu.registers.sp + 1)
+			assert.Equal(t, uint16(0x1234), cpu.Registers.PC, "CALL should jump to target address")
+			assert.Equal(t, uint16(0xFFFC), cpu.Registers.sp, "CALL should push return address onto stack")
+			retLow := bus.Read(cpu.Registers.sp)
+			retHigh := bus.Read(cpu.Registers.sp + 1)
 			expectedRet := initPC + 3
 			actualRet := toRegisterPair(retHigh, retLow)
 			assert.Equal(t, expectedRet, actualRet, "CALL should push correct return address")
@@ -541,12 +541,12 @@ func TestInstructions(t *testing.T) {
 
 		t.Run("Instruction: RET", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xC9)
-			cpu.registers.sp = 0xFFFC
-			bus.Write(cpu.registers.sp, 0x67)
-			bus.Write(cpu.registers.sp+1, 0x45)
+			cpu.Registers.sp = 0xFFFC
+			bus.Write(cpu.Registers.sp, 0x67)
+			bus.Write(cpu.Registers.sp+1, 0x45)
 			cpu.Step()
-			assert.Equal(t, uint16(0x4567), cpu.registers.pc, "RET should set PC to return address")
-			assert.Equal(t, uint16(0xFFFE), cpu.registers.sp, "RET should pop return address from stack")
+			assert.Equal(t, uint16(0x4567), cpu.Registers.PC, "RET should set PC to return address")
+			assert.Equal(t, uint16(0xFFFE), cpu.Registers.sp, "RET should pop return address from stack")
 		})
 
 		t.Run("Instruction: SBC_A_d8", func(t *testing.T) {
@@ -566,10 +566,10 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					_, cpu := setupWithOpcode(0xDE, tt.immediate)
-					cpu.registers.a = tt.initA
+					cpu.Registers.a = tt.initA
 					cpu.flags.Carry = tt.initCarry
 					cpu.Step()
-					assert.Equal(t, tt.expectedA, cpu.registers.a, "SBC A,d8 result mismatch")
+					assert.Equal(t, tt.expectedA, cpu.Registers.a, "SBC A,d8 result mismatch")
 					assert.Equal(t, tt.expectedZero, cpu.flags.Zero, "SBC A,d8 zero flag mismatch")
 				})
 			}
@@ -578,18 +578,18 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: JP_nn", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xC3, 0x21, 0x43)
 			cpu.Step()
-			assert.Equal(t, uint16(0x4321), cpu.registers.pc, "JP should jump to immediate address")
+			assert.Equal(t, uint16(0x4321), cpu.Registers.PC, "JP should jump to immediate address")
 		})
 
 		t.Run("Instruction: RST", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xDF)
-			cpu.registers.sp = 0xFFFE
-			initPC := cpu.registers.pc
+			cpu.Registers.sp = 0xFFFE
+			initPC := cpu.Registers.PC
 			cpu.Step()
-			assert.Equal(t, uint16(0x0018), cpu.registers.pc, "RST should set PC to fixed vector 0x0018")
-			assert.Equal(t, uint16(0xFFFC), cpu.registers.sp, "RST should push return address onto stack")
-			retHigh := bus.Read(cpu.registers.sp + 1)
-			retLow := bus.Read(cpu.registers.sp)
+			assert.Equal(t, uint16(0x0018), cpu.Registers.PC, "RST should set PC to fixed vector 0x0018")
+			assert.Equal(t, uint16(0xFFFC), cpu.Registers.sp, "RST should push return address onto stack")
+			retHigh := bus.Read(cpu.Registers.sp + 1)
+			retLow := bus.Read(cpu.Registers.sp)
 			expectedRet := initPC + 1
 			actualRet := uint16(retHigh)<<8 | uint16(retLow)
 			assert.Equal(t, expectedRet, actualRet, "RST should push correct return address")
@@ -614,9 +614,9 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					_, cpu := setupWithOpcode(0xF8, uint8(tt.offset))
-					cpu.registers.sp = tt.sp
+					cpu.Registers.sp = tt.sp
 					cpu.Step()
-					hl := toRegisterPair(cpu.registers.h, cpu.registers.l)
+					hl := toRegisterPair(cpu.Registers.h, cpu.Registers.l)
 					assert.Equal(t, tt.expectedHL, hl, tt.name+": HL mismatch")
 					assert.False(t, cpu.flags.Zero, tt.name+": Zero flag must be reset")
 					assert.False(t, cpu.flags.Subtract, tt.name+": Subtract flag must be reset")
@@ -629,12 +629,12 @@ func TestInstructions(t *testing.T) {
 		t.Run("POP_AF", func(t *testing.T) {
 			t.Run("all flags set", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xF1)
-				cpu.registers.sp = 0xFFFC
+				cpu.Registers.sp = 0xFFFC
 				// Write: low byte (flags) = 0xF0 (11110000), high byte (A) = 0xAA
-				bus.Write(cpu.registers.sp, 0xF0)
-				bus.Write(cpu.registers.sp+1, 0xAA)
+				bus.Write(cpu.Registers.sp, 0xF0)
+				bus.Write(cpu.Registers.sp+1, 0xAA)
 				cpu.popAF()
-				assert.Equal(t, uint8(0xAA), cpu.registers.a, "POP_AF: A register mismatch")
+				assert.Equal(t, uint8(0xAA), cpu.Registers.a, "POP_AF: A register mismatch")
 				assert.True(t, cpu.flags.Zero, "POP_AF: Zero flag should be set")
 				assert.True(t, cpu.flags.Subtract, "POP_AF: Subtract flag should be set")
 				assert.True(t, cpu.flags.HalfCarry, "POP_AF: HalfCarry flag should be set")
@@ -642,12 +642,12 @@ func TestInstructions(t *testing.T) {
 			})
 			t.Run("no flags set", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xF1)
-				cpu.registers.sp = 0xFFFC
+				cpu.Registers.sp = 0xFFFC
 				// Write: low byte (flags) = 0x00, high byte (A) = 0x55
-				bus.Write(cpu.registers.sp, 0x00)
-				bus.Write(cpu.registers.sp+1, 0x55)
+				bus.Write(cpu.Registers.sp, 0x00)
+				bus.Write(cpu.Registers.sp+1, 0x55)
 				cpu.popAF()
-				assert.Equal(t, uint8(0x55), cpu.registers.a, "POP_AF: A register mismatch")
+				assert.Equal(t, uint8(0x55), cpu.Registers.a, "POP_AF: A register mismatch")
 				assert.False(t, cpu.flags.Zero, "POP_AF: Zero flag should be reset")
 				assert.False(t, cpu.flags.Subtract, "POP_AF: Subtract flag should be reset")
 				assert.False(t, cpu.flags.HalfCarry, "POP_AF: HalfCarry flag should be reset")
@@ -672,9 +672,9 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					_, cpu := setupWithOpcode(0xE8, uint8(tt.offset))
-					cpu.registers.sp = tt.sp
+					cpu.Registers.sp = tt.sp
 					cpu.Step()
-					assert.Equal(t, tt.expectedSP, cpu.registers.sp, tt.name+": SP mismatch")
+					assert.Equal(t, tt.expectedSP, cpu.Registers.sp, tt.name+": SP mismatch")
 					// Flags: Z and N are reset; check HalfCarry and Carry.
 					assert.False(t, cpu.flags.Zero, tt.name+": Zero flag must be reset")
 					assert.False(t, cpu.flags.Subtract, tt.name+": Subtract flag must be reset")
@@ -707,29 +707,29 @@ func TestInstructions(t *testing.T) {
 	t.Run("Conditional Helpers", func(t *testing.T) {
 		// Setup a dummy CPU for direct helper calls.
 		_, cpu := setupWithOpcode(0x00) // opcode is irrelevant here
-		initPC := cpu.registers.pc
-		spBefore := cpu.registers.sp
+		initPC := cpu.Registers.PC
+		spBefore := cpu.Registers.sp
 
 		// Test jump with false condition: should add 3.
 		cpu.jump(0x2000, false)
-		assert.Equal(t, initPC+3, cpu.registers.pc, "Conditional jump (false) should increment PC by 3")
+		assert.Equal(t, initPC+3, cpu.Registers.PC, "Conditional jump (false) should increment PC by 3")
 
 		// Reset PC.
-		cpu.registers.pc = initPC
+		cpu.Registers.PC = initPC
 		// Test jumpRelative with false condition: should add 2.
 		var offset int8 = 5
 		cpu.jumpRelative(offset, false)
-		assert.Equal(t, initPC+2, cpu.registers.pc, "Conditional jumpRelative (false) should increment PC by 2")
+		assert.Equal(t, initPC+2, cpu.Registers.PC, "Conditional jumpRelative (false) should increment PC by 2")
 
 		// Test call with false condition: should add 3 and not change SP.
-		cpu.registers.pc = initPC
+		cpu.Registers.PC = initPC
 		cpu.call(0x3000, false)
-		assert.Equal(t, initPC+3, cpu.registers.pc, "Conditional call (false) should increment PC by 3")
-		assert.Equal(t, spBefore, cpu.registers.sp, "Conditional call (false) should not change SP")
+		assert.Equal(t, initPC+3, cpu.Registers.PC, "Conditional call (false) should increment PC by 3")
+		assert.Equal(t, spBefore, cpu.Registers.sp, "Conditional call (false) should not change SP")
 
 		// Test ret with false condition: should add 1.
-		cpu.registers.pc = initPC
+		cpu.Registers.PC = initPC
 		cpu.ret(false)
-		assert.Equal(t, initPC+1, cpu.registers.pc, "Conditional ret (false) should increment PC by 1")
+		assert.Equal(t, initPC+1, cpu.Registers.PC, "Conditional ret (false) should increment PC by 1")
 	})
 }

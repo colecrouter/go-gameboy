@@ -79,20 +79,20 @@ func (c *LR35902) and8(r *uint8, val uint8) {
 }
 func (c *LR35902) addSPr8() {
 	operand := int8(c.getImmediate8())
-	result := c.registers.sp + uint16(int16(operand))
+	result := c.Registers.sp + uint16(int16(operand))
 
 	// Compute half-carry and carry flags using only the lower nibble/byte.
 	hc := Reset
-	if (c.registers.sp&0xF)+(uint16(uint8(operand))&0xF) > 0xF {
+	if (c.Registers.sp&0xF)+(uint16(uint8(operand))&0xF) > 0xF {
 		hc = Set
 	}
 	carry := Reset
-	if (c.registers.sp&0xFF)+uint16(uint8(operand)) > 0xFF {
+	if (c.Registers.sp&0xFF)+uint16(uint8(operand)) > 0xFF {
 		carry = Set
 	}
 
 	// Write result to SP (wraps naturally to 16 bits) and update flags, Z and N are reset.
-	c.registers.sp = result
+	c.Registers.sp = result
 	c.setFlags(Reset, Reset, hc, carry)
 }
 func (c *LR35902) or8(r *uint8, val uint8) {

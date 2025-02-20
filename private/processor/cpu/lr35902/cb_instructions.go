@@ -85,14 +85,14 @@ func generateCbInstructions() [0x100]instruction {
 	// nil indicates (HL) which is handled specially.
 	regMapping := func(c *LR35902) [8]*uint8 {
 		return [8]*uint8{
-			&c.registers.b,
-			&c.registers.c,
-			&c.registers.d,
-			&c.registers.e,
-			&c.registers.h,
-			&c.registers.l,
+			&c.Registers.b,
+			&c.Registers.c,
+			&c.Registers.d,
+			&c.Registers.e,
+			&c.Registers.h,
+			&c.Registers.l,
 			nil, // (HL)
-			&c.registers.a,
+			&c.Registers.a,
 		}
 	}
 
@@ -110,7 +110,7 @@ func generateCbInstructions() [0x100]instruction {
 						c: 16,
 						p: 1,
 						op: func(c *LR35902) {
-							addr := toRegisterPair(c.registers.h, c.registers.l)
+							addr := toRegisterPair(c.Registers.h, c.Registers.l)
 							val := c.bus.Read(addr)
 							gen(&val)(c)
 							c.bus.Write(addr, val)
@@ -135,7 +135,7 @@ func generateCbInstructions() [0x100]instruction {
 						c: 16,
 						p: 1,
 						op: func(c *LR35902) {
-							addr := toRegisterPair(c.registers.h, c.registers.l)
+							addr := toRegisterPair(c.Registers.h, c.Registers.l)
 							val := c.bus.Read(addr)
 							gen(&val)(c)
 							c.bus.Write(addr, val)

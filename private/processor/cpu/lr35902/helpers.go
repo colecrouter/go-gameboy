@@ -2,12 +2,12 @@ package lr35902
 
 // Helpers
 func (c *LR35902) getImmediate8() uint8 {
-	val := c.bus.Read(c.registers.pc + 1)
+	val := c.bus.Read(c.Registers.PC + 1)
 	return val
 }
 
 func (c *LR35902) getImmediate16() uint16 {
-	high, low := c.bus.Read16(c.registers.pc + 1)
+	high, low := c.bus.Read16(c.Registers.PC + 1)
 	return toRegisterPair(high, low)
 }
 

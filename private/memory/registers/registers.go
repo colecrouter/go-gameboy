@@ -175,6 +175,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0x45:
 		r.LYCompare = value
 	case 0x46:
+		r.DMA = value
 		r.dma(value)
 	case 0x47:
 		r.PaletteData.Write(0, value)

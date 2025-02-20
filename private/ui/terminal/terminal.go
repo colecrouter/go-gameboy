@@ -46,7 +46,7 @@ func NewApplication(gb *system.GameBoy) *Application {
 
 func (a *Application) Run() {
 	// Start the GameBoy runtime.
-	go a.gb.Start()
+	go a.gb.Start(true)
 
 	// Set terminal to raw mode.
 	// oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))

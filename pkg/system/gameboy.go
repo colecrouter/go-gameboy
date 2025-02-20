@@ -66,10 +66,21 @@ func NewGameBoy() *GameBoy {
 
 	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.IF)
 
+	// Initialize default values
+	gb.IO.LCDControl.Write(0, 0x91)
+	gb.IO.LCDStatus.Write(0, 0x85)
+	gb.IO.PaletteData.Write(0, 0xFC)
+	gb.IO.ObjectPaletteData1.Write(0, 0xFF)
+	gb.IO.ObjectPaletteData2.Write(0, 0xFF)
+
 	return gb
 }
 
-func (gb *GameBoy) Start() {
+func (gb *GameBoy) Start(skip bool) {
+	if skip {
+		gb.CPU.Registers.PC = 0x100
+	}
+
 	for {
 		frameStart := time.Now()
 
@@ -112,7 +123,7 @@ func (gb *GameBoy) Stop() {
 }
 
 func (gb *GameBoy) PC() uint16 {
-	return gb.CPU.PC()
+	return gb.CPU.Registers.PC
 }
 
 func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {

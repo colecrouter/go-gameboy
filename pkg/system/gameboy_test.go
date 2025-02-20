@@ -32,11 +32,11 @@ func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
 
 	b.ResetTimer()
 
-	go gb.Start()
+	go gb.Start(true)
 
 	for {
 		// Wait until CPU passes the boot ROM (PC > 0xFF).
-		if gb.CPU.PC() > 0xFF {
+		if gb.CPU.Registers.PC > 0xFF {
 			gb.Stop()
 			break
 		}
@@ -64,7 +64,7 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	b.ResetTimer()
 
 	// run GameBoy in a goroutine so that we can stop it after 1 second
-	go gb.Start()
+	go gb.Start(false)
 
 	// let emulator run for approximately 1 second
 	time.Sleep(1 * time.Second)

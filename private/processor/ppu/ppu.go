@@ -171,36 +171,36 @@ func (p *PPU) DisplayClock() {
 		}
 	}
 
-	// // Draw sprite layer
-	// spriteHeight := tile.TILE_SIZE
-	// if p.registers.LCDControl.Sprites8x16 {
-	// 	spriteHeight = tile.TILE_SIZE * 2
-	// }
-	// for i := 0; i < 40; i++ {
-	// 	sprite := p.oam.ReadSprite(i)
+	// Draw sprite layer
+	spriteHeight := tile.TILE_SIZE
+	if p.registers.LCDControl.Sprites8x16 {
+		spriteHeight = tile.TILE_SIZE * 2
+	}
+	for i := 0; i < 40; i++ {
+		sprite := p.oam.ReadSprite(i)
 
-	// 	// Skip drawing if the sprite is off the screen
-	// 	if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
-	// 		continue
-	// 	}
+		// Skip drawing if the sprite is off the screen
+		if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
+			continue
+		}
 
-	// 	for x := 0; x < spriteHeight; x++ {
-	// 		for y := 0; y < tile.TILE_SIZE; y++ {
-	// 			// Get the pixel from the sprite
+		for x := 0; x < spriteHeight; x++ {
+			for y := 0; y < tile.TILE_SIZE; y++ {
+				// Get the pixel from the sprite
 
-	// 			pixel := sprite.ReadPixel(uint8(x), uint8(y))
-	// 			matched := p.registers.PaletteData.Match(pixel)
+				pixel := sprite.ReadPixel(uint8(x), uint8(y))
+				matched := p.registers.PaletteData.Match(pixel)
 
-	// 			// Skip drawing if the pixel is transparent
-	// 			if matched == 0 {
-	// 				continue
-	// 			}
+				// Skip drawing if the pixel is transparent
+				if matched == 0 {
+					continue
+				}
 
-	// 			// Draw the pixel
-	// 			p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[matched])
-	// 		}
-	// 	}
-	// }
+				// Draw the pixel
+				p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[matched])
+			}
+		}
+	}
 
 }
 

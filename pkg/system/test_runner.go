@@ -22,7 +22,7 @@ func RunBlarggTestRom(t *testing.T, romPath string) {
 	gb, testDevice := SetupBlarggTestSystem()
 	gb.CartridgeReader.InsertCartridge(game)
 
-	go gb.Start()
+	go gb.Start(true)
 	defer gb.Stop()
 
 	// Use a ticker for periodic checks and a timeout channel.
