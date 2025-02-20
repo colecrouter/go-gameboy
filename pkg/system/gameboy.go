@@ -43,7 +43,7 @@ func NewGameBoy() *GameBoy {
 	oamModule := &memory.OAM{}
 	gb.IF = &registers.Interrupt{}
 	gb.IE = &registers.Interrupt{}
-	gb.IO = registers.NewRegisters(oamModule, &gb.CartridgeReader, gb.IF)
+	gb.IO = registers.NewRegisters(gb.Bus, gb.IF)
 	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO, gb.IE)
 	gb.CartridgeReader = *reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
