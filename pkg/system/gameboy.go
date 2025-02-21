@@ -40,7 +40,7 @@ func NewGameBoy() *GameBoy {
 	gb := &GameBoy{}
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
-	oamModule := &memory.OAM{}
+	oamModule := memory.NewOAM(gb.VRAM)
 	gb.IF = &registers.Interrupt{}
 	gb.IE = &registers.Interrupt{}
 	gb.IO = registers.NewRegisters(gb.Bus, gb.IF)
@@ -72,6 +72,9 @@ func NewGameBoy() *GameBoy {
 	gb.IO.PaletteData.Write(0, 0xFC)
 	gb.IO.ObjectPaletteData1.Write(0, 0xFF)
 	gb.IO.ObjectPaletteData2.Write(0, 0xFF)
+
+	// Disable boot ROM
+	gb.IO.DisableBootROM = true
 
 	return gb
 }
@@ -132,4 +135,8 @@ func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {
 
 func (gb *GameBoy) ConnectSerialDevice(d registers.SerialDevice) {
 	gb.IO.Serial.Connect(d)
+}
+
+func (gb *GameBoy) Controller() *registers.JoyPad {
+	return &gb.IO.JoypadState
 }

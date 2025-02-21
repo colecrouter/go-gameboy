@@ -1,8 +1,6 @@
 package registers
 
 import (
-	"fmt"
-
 	"github.com/colecrouter/gameboy-go/private/memory"
 )
 
@@ -10,7 +8,7 @@ type Registers struct {
 	initialized bool
 	bus         memory.Device
 
-	JoypadState        uint8          // 0xFF00
+	JoypadState        JoyPad         // 0xFF00
 	Serial             SerialTransfer // 0xFF01-0xFF02
 	Timer              Timer          // 0xFF04-0xFF07
 	InterruptFlag      *Interrupt     // 0xFF0F
@@ -63,6 +61,7 @@ func NewRegisters(bus memory.Device, ir *Interrupt) *Registers {
 		initialized:   true,
 		Serial:        *NewSerialTransfer(ir),
 		Timer:         *NewTimer(ir),
+		JoypadState:   *NewJoyPad(ir),
 		InterruptFlag: ir,
 	}
 }
@@ -74,7 +73,7 @@ func (r *Registers) Read(addr uint16) uint8 {
 
 	switch addr {
 	case 0x00:
-		return r.JoypadState
+		return r.JoypadState.Read(0)
 	case 0x01, 0x02:
 		offset := addr - 0x01
 		return r.Serial.Read(offset)
@@ -147,7 +146,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 
 	switch addr {
 	case 0x00:
-		r.JoypadState = value
+		r.JoypadState.Write(0, value)
 	case 0x01, 0x02:
 		offset := addr - 0x01
 		r.Serial.Write(offset, value)
@@ -171,7 +170,7 @@ func (r *Registers) Write(addr uint16, value uint8) {
 	case 0x43:
 		r.ScrollX = value
 	case 0x44:
-		panic("LY is read-only")
+		// panic("LY is read-only")
 	case 0x45:
 		r.LYCompare = value
 	case 0x46:
@@ -211,7 +210,6 @@ func (r *Registers) Write(addr uint16, value uint8) {
 }
 
 func (r *Registers) dma(addr uint8) {
-	fmt.Printf("DMA transfer from 0x%02X00\n", addr)
 	source := uint16(addr) << 8 // Source address is (addr << 8)
 	for i := 0; i < 0xA0; i++ {
 		value := r.bus.Read(source + uint16(i))

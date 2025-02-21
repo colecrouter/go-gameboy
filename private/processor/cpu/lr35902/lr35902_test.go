@@ -12,8 +12,8 @@ import (
 // New helper: setupWithOpcode initializes CPU and writes opcodes + extra bytes.
 func setupWithOpcode(codes ...uint8) (*memory.Bus, *LR35902) {
 	bus := &memory.Bus{}
-	io := &registers.Registers{}
 	ie := &registers.Interrupt{}
+	io := registers.NewRegisters(bus, ie)
 	bus.AddDevice(0x0000, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x10000)})
 	cpu := NewLR35902(bus, io, ie)
 	// Write provided opcodes to PC sequentially.
@@ -701,6 +701,17 @@ func TestInstructions(t *testing.T) {
 			if !cpu.ime {
 				t.Error("After one instruction delay, IME should be enabled")
 			}
+		})
+
+		t.Run("Instruction: RETI", func(t *testing.T) {
+			bus, cpu := setupWithOpcode(0xD9)
+			cpu.Registers.sp = 0xFFFC
+			bus.Write(cpu.Registers.sp, 0x34)   // low byte
+			bus.Write(cpu.Registers.sp+1, 0x12) // high byte => target address 0x1234
+			cpu.Step()
+			assert.Equal(t, uint16(0x1234), cpu.Registers.PC, "RETI should set PC from return address")
+			assert.Equal(t, uint16(0xFFFE), cpu.Registers.sp, "RETI should pop return address from stack")
+			assert.True(t, cpu.ime, "RETI should set IME to true")
 		})
 	})
 

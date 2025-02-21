@@ -180,7 +180,7 @@ func (p *PPU) DisplayClock() {
 		sprite := p.oam.ReadSprite(i)
 
 		// Skip drawing if the sprite is off the screen
-		if sprite.X() >= visibleColumns || sprite.Y() >= visibleLines {
+		if sprite.X >= visibleColumns || sprite.Y >= visibleLines {
 			continue
 		}
 
@@ -188,16 +188,26 @@ func (p *PPU) DisplayClock() {
 			for y := 0; y < tile.TILE_SIZE; y++ {
 				// Get the pixel from the sprite
 
-				pixel := sprite.ReadPixel(uint8(x), uint8(y))
-				matched := p.registers.PaletteData.Match(pixel)
-
-				// Skip drawing if the pixel is transparent
-				if matched == 0 {
+				t := sprite.GetTile()
+				if t == nil {
 					continue
 				}
 
-				// Draw the pixel
-				p.image.Set(int(sprite.X())+x, int(sprite.Y())+y, monochrome.Palette[matched])
+				// Draw
+				pixelX := int(sprite.X) + x
+				pixelY := int(sprite.Y) + y
+
+				// Apply color palette
+				// Convert to 2D array
+				var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
+				for y := 0; y < tile.TILE_SIZE; y++ {
+					for x := 0; x < tile.TILE_SIZE; x++ {
+						mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
+					}
+				}
+
+				// Draw the tile
+				p.safeDraw(mapped[:], pixelY, pixelX)
 			}
 		}
 	}

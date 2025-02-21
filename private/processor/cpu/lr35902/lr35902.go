@@ -32,10 +32,16 @@ func (c *LR35902) Step() int {
 		panic("CPU not initialized")
 	}
 
+	ienable := c.ie.Read(0)
+	iflag := c.io.InterruptFlag.Read(0)
+
 	// Check for interrupts
 	for i := VBlankISR; i <= JoypadISR; i++ {
-		// TODO gross
-		if c.ie.Read(0)&(1<<isrOffsets[i]) != 0 && c.io.InterruptFlag.Read(0)&(1<<isrOffsets[i]) != 0 {
+		var ieBit, ifBit uint8
+		ieBit = ienable & (1 << isrOffsets[i])
+		ifBit = iflag & (1 << isrOffsets[i])
+
+		if ieBit != 0 && ifBit != 0 {
 			if c.ime {
 				c.isr(i)
 
@@ -70,7 +76,7 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
-	if c.Registers.PC == 0xc2f6 {
+	if c.Registers.PC == 0x29a6 {
 		fmt.Printf("")
 	}
 

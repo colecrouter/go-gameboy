@@ -935,6 +935,7 @@ var instructions = [0x100]instruction{
 	// RETI
 	0xD9: {c: 16, p: 0, op: func(c *LR35902) {
 		c.ret(true)
+		c.ime = true
 	}},
 	// JP C,a16
 	0xDA: {c: 12, p: 0, op: func(c *LR35902) {
@@ -1022,7 +1023,7 @@ var instructions = [0x100]instruction{
 	}},
 	// DI
 	0xF3: {c: 4, p: 1, op: func(c *LR35902) {
-		c.ime = false
+		// c.ime = false
 	}},
 	// INVALID
 	// PUSH AF
