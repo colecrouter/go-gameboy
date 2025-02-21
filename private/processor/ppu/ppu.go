@@ -219,18 +219,36 @@ func (p *PPU) Image() image.Image {
 }
 
 func (p *PPU) safeDraw(pixels [][tile.TILE_SIZE]uint8, y, x int) {
-	// Since we're drawing by row, we can have rows that are partially off the screen
-	// Clip the row so it doesn't exceed the bounds of the image
-	minX := max(0, 0-x)
-	maxX := min(tile.TILE_SIZE, (visibleColumns-x)-1)
-
 	for i, row := range pixels {
-		// Skip drawing if the row is off the screen
-		if y+i < 0 || y+i >= visibleLines {
+		drawY := y + i
+		// Skip if row is off the screen.
+		if drawY < 0 || drawY >= visibleLines {
 			continue
 		}
 
-		// Copy directly to the image buffer
-		copy(p.image.Pix[(y+i)*visibleColumns+x:], row[minX:maxX])
+		// Skip row entirely if the sprite is fully off-screen horizontally.
+		if x >= visibleColumns || x+tile.TILE_SIZE <= 0 {
+			continue
+		}
+
+		// Compute starting indices.
+		srcStart := 0
+		destX := x
+		if x < 0 {
+			srcStart = -x
+			destX = 0
+		}
+
+		srcEnd := tile.TILE_SIZE
+		if x+tile.TILE_SIZE > visibleColumns {
+			srcEnd = visibleColumns - x
+		}
+
+		if srcEnd <= srcStart {
+			continue
+		}
+
+		destIndex := (drawY * visibleColumns) + destX
+		copy(p.image.Pix[destIndex:], row[srcStart:srcEnd])
 	}
 }

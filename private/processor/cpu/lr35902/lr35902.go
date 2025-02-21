@@ -76,7 +76,7 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
-	if c.Registers.PC == 0x29a6 {
+	if c.Registers.PC >= 0x7000 && c.Registers.PC < 0x9FFF {
 		fmt.Printf("")
 	}
 
