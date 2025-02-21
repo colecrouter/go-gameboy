@@ -47,16 +47,22 @@ func NewApplication(gb *system.GameBoy) *Application {
 }
 
 func (a *Application) Run() {
-	// Start the GameBoy runtime.
-	go a.gb.Start(true)
-
 	// Set terminal to raw mode.
 	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
-	defer func() {
-		recover()
-		if oldState != nil {
-			term.Restore(int(os.Stdin.Fd()), oldState)
-		}
+	// Defer terminal restoration in the main goroutine.
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	// Create a panic channel.
+	panicChan := make(chan interface{}, 1)
+
+	// Start the GameBoy runtime in a goroutine with panic recovery.
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicChan <- r
+			}
+		}()
+		a.gb.Start(true)
 	}()
 
 	// Redirect stdout and stderr to the log menu.
@@ -153,6 +159,10 @@ Loop:
 
 			joy.SetButton(butt, true)
 		case <-sigChan:
+			break Loop
+
+		case <-panicChan:
+			// Optionally log p
 			break Loop
 		}
 	}
