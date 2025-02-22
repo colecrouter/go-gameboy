@@ -134,8 +134,10 @@ func (j *JoyPad) ResetButtons() {
 
 func NewJoyPad(interrupt *Interrupt) *JoyPad {
 	return &JoyPad{
-		buttons:     make([]bool, 8),
-		interrupt:   interrupt,
-		initialized: true,
+		buttons:         make([]bool, 8),
+		interrupt:       interrupt,
+		initialized:     true,
+		selectButtons:   true,
+		selectDirection: true,
 	}
 }

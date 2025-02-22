@@ -66,16 +66,6 @@ func NewGameBoy() *GameBoy {
 
 	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.IF)
 
-	// Initialize default values
-	gb.IO.LCDControl.Write(0, 0x91)
-	gb.IO.LCDStatus.Write(0, 0x85)
-	gb.IO.PaletteData.Write(0, 0xFC)
-	gb.IO.ObjectPaletteData1.Write(0, 0xFF)
-	gb.IO.ObjectPaletteData2.Write(0, 0xFF)
-
-	// Disable boot ROM
-	gb.IO.DisableBootROM = true
-
 	return gb
 }
 

@@ -44,10 +44,6 @@ func (c *LR35902) Step() int {
 
 		if ieBit != 0 && ifBit != 0 {
 			if c.ime {
-				if i == JoypadISR {
-					fmt.Printf("")
-				}
-
 				c.isr(i)
 
 				// Clear interrupt flag
@@ -85,7 +81,7 @@ func (c *LR35902) Step() int {
 	// 	fmt.Printf("")
 	// }
 
-	if c.Registers.PC == 0x02ca {
+	if c.Registers.PC == 0x1446 {
 		// Load stack for debugging
 		var stack [63]uint16
 		for j := 0; j < len(stack); j++ {

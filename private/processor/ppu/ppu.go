@@ -186,6 +186,7 @@ func (p *PPU) DisplayClock() {
 
 		for x := 0; x < spriteHeight; x++ {
 			for y := 0; y < tile.TILE_SIZE; y++ {
+
 				// Get the pixel from the sprite
 
 				t := sprite.GetTile()

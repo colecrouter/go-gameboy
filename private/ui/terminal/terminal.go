@@ -62,7 +62,7 @@ func (a *Application) Run() {
 				panicChan <- r
 			}
 		}()
-		a.gb.Start(true)
+		a.gb.Start(false)
 	}()
 
 	// Redirect stdout and stderr to the log menu.
