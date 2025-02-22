@@ -17,27 +17,27 @@ const (
 
 func (c *LR35902) setFlags(zero, subtract, halfCarry, carry FlagState) {
 	if zero == Set {
-		c.flags.Zero = true
+		c.Flags.Zero = true
 	} else if zero == Reset {
-		c.flags.Zero = false
+		c.Flags.Zero = false
 	}
 
 	if subtract == Set {
-		c.flags.Subtract = true
+		c.Flags.Subtract = true
 	} else if subtract == Reset {
-		c.flags.Subtract = false
+		c.Flags.Subtract = false
 	}
 
 	if halfCarry == Set {
-		c.flags.HalfCarry = true
+		c.Flags.HalfCarry = true
 	} else if halfCarry == Reset {
-		c.flags.HalfCarry = false
+		c.Flags.HalfCarry = false
 	}
 
 	if carry == Set {
-		c.flags.Carry = true
+		c.Flags.Carry = true
 	} else if carry == Reset {
-		c.flags.Carry = false
+		c.Flags.Carry = false
 	}
 }
 

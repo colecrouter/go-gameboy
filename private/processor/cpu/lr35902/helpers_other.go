@@ -2,10 +2,10 @@ package lr35902
 
 // Other
 func (c *LR35902) decimalAdjust() {
-	a := c.Registers.a
-	subtract := c.flags.Subtract
-	halfCarry := c.flags.HalfCarry
-	carry := c.flags.Carry
+	a := c.Registers.A
+	subtract := c.Flags.Subtract
+	halfCarry := c.Flags.HalfCarry
+	carry := c.Flags.Carry
 	offset := uint8(0)
 
 	if !subtract {
@@ -26,8 +26,8 @@ func (c *LR35902) decimalAdjust() {
 		a -= offset
 	}
 
-	c.Registers.a = a
-	c.flags.Zero = (a == 0)
-	c.flags.HalfCarry = false
-	c.flags.Carry = ((offset & 0x60) != 0)
+	c.Registers.A = a
+	c.Flags.Zero = (a == 0)
+	c.Flags.HalfCarry = false
+	c.Flags.Carry = ((offset & 0x60) != 0)
 }

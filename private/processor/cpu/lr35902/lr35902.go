@@ -11,10 +11,11 @@ import (
 type LR35902 struct {
 	initialized bool
 	Registers   struct {
-		a, b, c, d, e, h, l uint8
-		sp, PC              uint16
+		A, B, C, D, E, H, L uint8
+		SP, PC              uint16
 	}
-	flags   Flags
+	Flags Flags
+
 	bus     *memory.Bus
 	io      *registers.Registers
 	ie      *registers.Interrupt
@@ -43,6 +44,10 @@ func (c *LR35902) Step() int {
 
 		if ieBit != 0 && ifBit != 0 {
 			if c.ime {
+				if i == JoypadISR {
+					fmt.Printf("")
+				}
+
 				c.isr(i)
 
 				// Clear interrupt flag
@@ -76,7 +81,20 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
-	if c.Registers.PC >= 0x7000 && c.Registers.PC < 0x9FFF {
+	// if c.Registers.PC >= 0x7000 && c.Registers.PC < 0x9FFF {
+	// 	fmt.Printf("")
+	// }
+
+	if c.Registers.PC == 0x02ca {
+		// Load stack for debugging
+		var stack [63]uint16
+		for j := 0; j < len(stack); j++ {
+			offset := c.Registers.SP + uint16(j*2)
+			if offset > 0xFFFE {
+				break
+			}
+			stack[j] = toRegisterPair(c.bus.Read16(offset))
+		}
 		fmt.Printf("")
 	}
 
@@ -113,18 +131,6 @@ func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers, ie *registers
 	cpu.bus = bus
 	cpu.io = ioRegisters
 	cpu.ie = ie
-
-	// Initialize registers to default values
-	cpu.Registers.b = 0x00
-	cpu.Registers.c = 0x13
-	cpu.Registers.d = 0x00
-	cpu.Registers.e = 0xD8
-	cpu.Registers.h = 0x01
-	cpu.Registers.l = 0x4D
-	cpu.Registers.a = 0x01
-
-	// Initialize flags to default values
-	cpu.flags.Write(0xB0)
 
 	return cpu
 }

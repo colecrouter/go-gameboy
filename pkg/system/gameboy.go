@@ -81,7 +81,68 @@ func NewGameBoy() *GameBoy {
 
 func (gb *GameBoy) Start(skip bool) {
 	if skip {
-		gb.CPU.Registers.PC = 0x100
+		// Initialize registers to default DMG ROM values
+		// https://gbdev.io/pandocs/Power_Up_Sequence.html#cpu-registers
+		gb.CPU.Registers.PC = 0x0100
+
+		gb.CPU.Registers.B = 0x00
+		gb.CPU.Registers.A = 0x01
+		gb.CPU.Registers.C = 0x13
+		gb.CPU.Registers.D = 0x00
+		gb.CPU.Registers.E = 0xD8
+		gb.CPU.Registers.H = 0x01
+		gb.CPU.Registers.L = 0x4D
+		gb.CPU.Registers.SP = 0xFFFE
+
+		gb.CPU.Flags.Write(0xB0)
+
+		gb.IO.Write(0x00, 0xCF) // Joypad input
+		gb.IO.Write(0x01, 0x00) // Serial transfer
+		gb.IO.Write(0x02, 0x7E) // Serial transfer
+		gb.IO.Write(0x04, 0xAB) // Timer and divider
+		gb.IO.Write(0x05, 0x00) // Timer counter
+		gb.IO.Write(0x06, 0x00) // Timer modulo
+		gb.IO.Write(0x07, 0xF8) // Timer control
+		gb.IO.Write(0x0F, 0xE1) // Interrupts
+
+		// Audio
+		gb.IO.Write(0x10, 0x80)
+		gb.IO.Write(0x11, 0xBF)
+		gb.IO.Write(0x12, 0xF3)
+		gb.IO.Write(0x13, 0xFF)
+		gb.IO.Write(0x14, 0xBF)
+		gb.IO.Write(0x16, 0x3F)
+		gb.IO.Write(0x17, 0x00)
+		gb.IO.Write(0x18, 0xFF)
+		gb.IO.Write(0x19, 0xBF)
+		gb.IO.Write(0x1A, 0x7F)
+		gb.IO.Write(0x1B, 0xFF)
+		gb.IO.Write(0x1C, 0x9F)
+		gb.IO.Write(0x1D, 0xFF)
+		gb.IO.Write(0x1E, 0xBF)
+		gb.IO.Write(0x20, 0xFF)
+		gb.IO.Write(0x21, 0x00)
+		gb.IO.Write(0x22, 0x00)
+		gb.IO.Write(0x23, 0xBF)
+		gb.IO.Write(0x24, 0x77)
+		gb.IO.Write(0x25, 0xF3)
+		gb.IO.Write(0x26, 0xF1)
+
+		gb.IO.Write(0x40, 0x91) // LCD Control
+		gb.IO.Write(0x41, 0x85) // LCD Status
+		gb.IO.Write(0x42, 0x00) // Scroll Y
+		gb.IO.Write(0x43, 0x00) // Scroll X
+		gb.IO.Write(0x44, 0x00) // LY
+		gb.IO.Write(0x45, 0x00) // LY Compare
+		gb.IO.Write(0x46, 0xFF) // DMA
+		gb.IO.Write(0x47, 0xFC) // Palette Data
+		// gb.IO.Write(0x48, 0xFF) // Object Palette Data 1
+		// gb.IO.Write(0x49, 0xFF) // Object Palette Data 2
+		gb.IO.Write(0x4A, 0x00) // Window Y
+		gb.IO.Write(0x4B, 0x00) // Window X
+		// CGB only
+
+		gb.IO.Write(0xFF, 0x00) // Interrupt Enable Register
 	}
 
 	for {

@@ -346,8 +346,8 @@ func getCBMnemonic(op byte) string {
 // PrintRegisters prints the current state of the CPU registers and flags.
 func (c *LR35902) PrintRegisters() {
 	fmt.Printf("\r\nRegisters:\r\n")
-	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\r\n", c.Registers.a, c.Registers.b, c.Registers.c, c.Registers.d, c.Registers.e)
-	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.Registers.h, c.Registers.l)
-	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.Registers.sp, c.Registers.PC)
-	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
+	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\r\n", c.Registers.A, c.Registers.B, c.Registers.C, c.Registers.D, c.Registers.E)
+	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.Registers.H, c.Registers.L)
+	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.Registers.SP, c.Registers.PC)
+	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.Flags.Zero, c.Flags.Subtract, c.Flags.HalfCarry, c.Flags.Carry)
 }

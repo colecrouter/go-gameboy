@@ -32,7 +32,7 @@ func (c *LR35902) rotate(r *uint8, left, useCarryBit, updateZ bool) {
 	// otherwise, use the bit that got shifted out.
 	var carryIn uint8
 	if useCarryBit {
-		if c.flags.Carry {
+		if c.Flags.Carry {
 			carryIn = 1
 		} else {
 			carryIn = 0
