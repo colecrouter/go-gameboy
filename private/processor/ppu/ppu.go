@@ -7,7 +7,7 @@ import (
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/registers"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
-	"github.com/colecrouter/gameboy-go/private/memory/vram/tile"
+	"github.com/colecrouter/gameboy-go/private/memory/vram/layers"
 )
 
 type PPU struct {
@@ -31,11 +31,10 @@ const (
 	vBlankLines        = 10
 	TotalLinesPerFrame = visibleLines + vBlankLines
 
-	// Helpers
+	// Screen dimensions
 	visibleColumns = 160
 )
 
-// NewPPU creates a new PPU instance
 func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie *registers.Interrupt) *PPU {
 	return &PPU{
 		interrupt: ie,
@@ -48,8 +47,8 @@ func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie
 
 /*
 -------┌──────────┐-------
-oam    │ transfer │ hblank
-80 c   │   172 c  │ 204 c
+   oam │ transfer │ hblank
+  80 c │   172 c  │ 204 c
        │ x 144 l  │
        │          │
 -------└──────────┘-------
@@ -57,13 +56,10 @@ oam    │ transfer │ hblank
          10 l
 */
 
-// SystemClock emulates a clock cycle on the PPU
+// SystemClock emulates one PPU cycle.
 func (p *PPU) SystemClock() {
-	// Transitions modes
-	// See above diagram for reference
 	if p.registers.LY >= visibleLines {
 		p.registers.LCDStatus.PPUMode = registers.VBlank
-
 		if p.registers.LY == visibleLines {
 			p.interrupt.VBlank = true
 		}
@@ -81,7 +77,6 @@ func (p *PPU) SystemClock() {
 		}
 	}
 
-	// Handle counter incrementation
 	p.lineCycleCounter++
 	if p.lineCycleCounter == TotalCyclesPerLine {
 		p.registers.LY++
@@ -92,164 +87,45 @@ func (p *PPU) SystemClock() {
 	}
 }
 
-// Clock updates the image produced by the PPU
+// compositeImage overlays src onto dst; it assumes pixel value 0 is transparent.
+func compositeImage(dst, src *image.Paletted) {
+	// Both images must have the same bounds.
+	for i, pix := range src.Pix {
+		if pix != 0 {
+			dst.Pix[i] = pix
+		}
+	}
+}
+
+// DisplayClock updates p.image by compositing BG, window, and sprite layers.
 func (p *PPU) DisplayClock() {
-	addressingMode := vram.Mode8000
-	if !p.registers.LCDControl.Use8000Method {
-		addressingMode = vram.Mode8800
-	}
+	// Create new layers with the screen bounds.
+	screenRect := image.Rect(0, 0, visibleColumns, visibleLines)
+	bgLayer := layers.NewBGLayer(p.vram, p.registers, screenRect)
+	winLayer := layers.NewWindowLayer(p.vram, p.registers, screenRect)
+	spriteLayer := layers.NewSpriteLayer(p.oam, p.vram, p.registers, screenRect)
 
-	// Reset the image
-	for i := range p.image.Pix {
-		p.image.Pix[i] = 0
-	}
+	// Render layers.
+	bgImg := bgLayer.Image()
+	finalImg := image.NewPaletted(screenRect, monochrome.Palette)
 
-	// Draw background layer
-	bgMapMode := vram.TileMapMode(p.registers.LCDControl.BackgroundUseSecondTileMap)
-	for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
-		pixelY := (int(tileY)*tile.TILE_SIZE - int(p.registers.ScrollY) + 256) % 256
+	// Start with the background.
+	copy(finalImg.Pix, bgImg.(*image.Paletted).Pix)
 
-		for tileX := uint8(0); tileX < visibleColumns/tile.TILE_SIZE; tileX++ {
-			pixelX := int(tileX)*tile.TILE_SIZE - int(p.registers.ScrollX)
-			t := p.vram.GetMappedTile(tileY, tileX, bgMapMode, addressingMode)
-
-			// Issue maybe?
-			if t == nil {
-				continue
-			}
-
-			// Apply color palette
-			// Convert to 2D array
-			var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
-			for y := 0; y < tile.TILE_SIZE; y++ {
-				for x := 0; x < tile.TILE_SIZE; x++ {
-					mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
-				}
-			}
-
-			// Draw the tile
-			p.safeDraw(mapped[:], int(pixelY), int(pixelX))
-		}
-	}
-
-	// Draw window layer
+	// Composite window layer (if enabled).
 	if p.registers.LCDControl.EnableWindow {
-		fgMapMode := vram.TileMapMode(p.registers.LCDControl.WindowUseSecondTileMap)
-		for tileY := uint8(0); tileY < visibleLines/tile.TILE_SIZE; tileY++ {
-			pixelY := int(tileY)*tile.TILE_SIZE - int(p.registers.WindowY)
-
-			if pixelY < 0 {
-				continue
-			}
-
-			for tileX := uint8(0); tileX < visibleColumns/tile.TILE_SIZE; tileX++ {
-				pixelX := int(tileX)*tile.TILE_SIZE - int(p.registers.WindowX) + 7
-
-				if pixelX < 0 {
-					continue
-				}
-
-				t := p.vram.GetMappedTile(tileY, tileX, fgMapMode, addressingMode)
-
-				// Issue maybe?
-				if t == nil {
-					continue
-				}
-
-				// Apply color palette
-				// Convert to 2D array
-				var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
-				for y := 0; y < tile.TILE_SIZE; y++ {
-					for x := 0; x < tile.TILE_SIZE; x++ {
-						mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
-					}
-				}
-
-				// Draw the tile
-				p.safeDraw(mapped[:], int(pixelY), int(pixelX))
-			}
-		}
+		winImg := winLayer.Image()
+		compositeImage(finalImg, winImg.(*image.Paletted))
 	}
 
-	// Draw sprite layer
-	spriteHeight := tile.TILE_SIZE
-	if p.registers.LCDControl.Sprites8x16 {
-		spriteHeight = tile.TILE_SIZE * 2
-	}
-	for i := 0; i < 40; i++ {
-		sprite := p.oam.ReadSprite(i)
+	// Composite sprite layer.
+	spriteImg := spriteLayer.Image()
+	compositeImage(finalImg, spriteImg.(*image.Paletted))
 
-		// Skip drawing if the sprite is off the screen
-		if sprite.X >= visibleColumns || sprite.Y >= visibleLines {
-			continue
-		}
-
-		for x := 0; x < spriteHeight; x++ {
-			for y := 0; y < tile.TILE_SIZE; y++ {
-
-				// Get the pixel from the sprite
-
-				t := sprite.GetTile()
-				if t == nil {
-					continue
-				}
-
-				// Draw
-				pixelX := int(sprite.X) + x
-				pixelY := int(sprite.Y) + y
-
-				// Apply color palette
-				// Convert to 2D array
-				var mapped [tile.TILE_SIZE][tile.TILE_SIZE]uint8
-				for y := 0; y < tile.TILE_SIZE; y++ {
-					for x := 0; x < tile.TILE_SIZE; x++ {
-						mapped[y][x] = p.registers.PaletteData.Match(t.Pixels[y*tile.TILE_SIZE+x])
-					}
-				}
-
-				// Draw the tile
-				p.safeDraw(mapped[:], pixelY, pixelX)
-			}
-		}
-	}
-
+	// Set the composite image as the PPU output.
+	p.image = finalImg
 }
 
 func (p *PPU) Image() image.Image {
 	return p.image
-}
-
-func (p *PPU) safeDraw(pixels [][tile.TILE_SIZE]uint8, y, x int) {
-	for i, row := range pixels {
-		drawY := y + i
-		// Skip if row is off the screen.
-		if drawY < 0 || drawY >= visibleLines {
-			continue
-		}
-
-		// Skip row entirely if the sprite is fully off-screen horizontally.
-		if x >= visibleColumns || x+tile.TILE_SIZE <= 0 {
-			continue
-		}
-
-		// Compute starting indices.
-		srcStart := 0
-		destX := x
-		if x < 0 {
-			srcStart = -x
-			destX = 0
-		}
-
-		srcEnd := tile.TILE_SIZE
-		if x+tile.TILE_SIZE > visibleColumns {
-			srcEnd = visibleColumns - x
-		}
-
-		if srcEnd <= srcStart {
-			continue
-		}
-
-		destIndex := (drawY * visibleColumns) + destX
-		copy(p.image.Pix[destIndex:], row[srcStart:srcEnd])
-	}
 }

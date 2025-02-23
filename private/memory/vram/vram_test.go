@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/colecrouter/gameboy-go/private/memory/vram/tile"
+	"github.com/colecrouter/gameboy-go/private/memory/vram/drawables/tile"
 )
 
 // Existing test for reading mapped tiles.
@@ -17,7 +17,7 @@ func TestReadMappedTileAt(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		expectedBytes1[i] = uint8(10 + i)
 	}
-	expectedTile1 := tile.FromBytes(expectedBytes1)
+	expectedTile1 := tile.NewTile(expectedBytes1)
 
 	v.tiles[10] = expectedTile1
 	// Set the tile map entry to index 10.
@@ -37,7 +37,7 @@ func TestReadMappedTileAt(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		expectedBytes2[i] = uint8(130 + i)
 	}
-	expectedTile2 := tile.FromBytes(expectedBytes2)
+	expectedTile2 := tile.NewTile(expectedBytes2)
 
 	v.tiles[130] = expectedTile2
 
@@ -80,7 +80,7 @@ func TestTileRenderingModes(t *testing.T) {
 		// Compare each pixel.
 		for y := 0; y < 8; y++ {
 			for x := 0; x < 8; x++ {
-				got := ti.Pixels[y*tile.TILE_SIZE+x]
+				got := ti.Pixels()[y*tile.TILE_SIZE+x]
 				expected := buffer[y][x]
 				if got != expected {
 					t.Errorf("Mode8000 pixel (%d,%d): expected %d, got %d", x, y, expected, got)
@@ -103,7 +103,7 @@ func TestTileRenderingModes(t *testing.T) {
 			v.Write(uint16(baseAddr+i), b)
 		}
 		// Set the tile in the tiles cache, so GetMappedTile can find it.
-		expectedTile := tile.FromBytes(lines)
+		expectedTile := tile.NewTile(lines)
 		v.tiles[128] = expectedTile
 
 		ti := v.GetMappedTile(0, 0, false, Mode8800)
@@ -111,7 +111,7 @@ func TestTileRenderingModes(t *testing.T) {
 		// Compare each pixel.
 		for y := 0; y < 8; y++ {
 			for x := 0; x < 8; x++ {
-				got := ti.Pixels[y*tile.TILE_SIZE+x]
+				got := ti.Pixels()[y*tile.TILE_SIZE+x]
 				expected := buffer[y][x]
 				if got != expected {
 					t.Errorf("Mode8800 pixel (%d,%d): expected %d, got %d", x, y, expected, got)

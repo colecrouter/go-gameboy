@@ -1,6 +1,6 @@
 package vram
 
-import "github.com/colecrouter/gameboy-go/private/memory/vram/tile"
+import "github.com/colecrouter/gameboy-go/private/memory/vram/drawables/tile"
 
 type TileData [0x1800]uint8
 type TileMap [0x400]uint8
@@ -34,7 +34,7 @@ func (v *VRAM) Write(addr uint16, data uint8) {
 
 		var tileBytes [16]uint8
 		copy(tileBytes[:], v.tileData[index*16:index*16+16])
-		v.tiles[index] = tile.FromBytes(tileBytes)
+		v.tiles[index] = tile.NewTile(tileBytes)
 	} else if addr < 0x1C00 {
 		v.tileMap0[addr-0x1800] = data
 	} else if addr < 0x2000 {

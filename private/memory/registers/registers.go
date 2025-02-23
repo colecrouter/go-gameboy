@@ -8,24 +8,23 @@ type Registers struct {
 	initialized bool
 	bus         memory.Device
 
-	JoypadState        JoyPad         // 0xFF00
-	Serial             SerialTransfer // 0xFF01-0xFF02
-	Timer              Timer          // 0xFF04-0xFF07
-	InterruptFlag      *Interrupt     // 0xFF0F
-	Audio              uint32         // 0xFF10-0xFF26
-	WavePattern        uint16         // 0xFF30-0xFF3F
-	LCDControl         LCDControl     // 0xFF40
-	LCDStatus          LCDStatus      // 0xFF41-0xFF45
-	ScrollY            uint8          // 0xFF42
-	ScrollX            uint8          // 0xFF43
-	LY                 uint8          // 0xFF44
-	LYCompare          uint8          // 0xFF45
-	DMA                uint8          // 0xFF46
-	PaletteData        Palette        // 0xFF47
-	ObjectPaletteData1 Palette        // 0xFF48
-	ObjectPaletteData2 Palette        // 0xFF49
-	WindowY            uint8          // 0xFF4A
-	WindowX            uint8          // 0xFF4B
+	JoypadState    JoyPad         // 0xFF00
+	Serial         SerialTransfer // 0xFF01-0xFF02
+	Timer          Timer          // 0xFF04-0xFF07
+	InterruptFlag  *Interrupt     // 0xFF0F
+	Audio          uint32         // 0xFF10-0xFF26
+	WavePattern    uint16         // 0xFF30-0xFF3F
+	LCDControl     LCDControl     // 0xFF40
+	LCDStatus      LCDStatus      // 0xFF41-0xFF45
+	ScrollY        uint8          // 0xFF42 - Background Y scroll position
+	ScrollX        uint8          // 0xFF43 - Background X scroll position
+	LY             uint8          // 0xFF44
+	LYCompare      uint8          // 0xFF45
+	DMA            uint8          // 0xFF46
+	TilePalette    Palette        // 0xFF47 - Color IDs of the BG and Window tiles. (Non-CGB Mode only)
+	ObjectPalletes [2]Palette     // 0xFF48-0xFF49 - Selectable color IDs of sprites/objcts. (Non-CGB Mode only)
+	WindowY        uint8          // 0xFF4A - Foreground (Window) Y position
+	WindowX        uint8          // 0xFF4B - Foreground (Window) X position
 
 	// CGB only
 	// TODO
@@ -104,11 +103,11 @@ func (r *Registers) Read(addr uint16) uint8 {
 	case 0x46:
 		return r.DMA
 	case 0x47:
-		return r.PaletteData.Read(0)
+		return r.TilePalette.Read(0)
 	case 0x48:
-		return r.ObjectPaletteData1.Read(0)
+		return r.ObjectPalletes[0].Read(0)
 	case 0x49:
-		return r.ObjectPaletteData2.Read(0)
+		return r.ObjectPalletes[1].Read(0)
 	case 0x4A:
 		return r.WindowY
 	case 0x4B:
@@ -177,11 +176,11 @@ func (r *Registers) Write(addr uint16, value uint8) {
 		r.DMA = value
 		r.dma(value)
 	case 0x47:
-		r.PaletteData.Write(0, value)
+		r.TilePalette.Write(0, value)
 	case 0x48:
-		r.ObjectPaletteData1.Write(0, value)
+		r.ObjectPalletes[0].Write(0, value)
 	case 0x49:
-		r.ObjectPaletteData2.Write(0, value)
+		r.ObjectPalletes[1].Write(0, value)
 	case 0x4A:
 		r.WindowY = value
 	case 0x4B:

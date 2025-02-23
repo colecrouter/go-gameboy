@@ -21,7 +21,7 @@ func TestPPU(t *testing.T) {
 	ie := &registers.Interrupt{}
 	regs := &registers.Registers{}
 	// Set the palette to a simple 4-color palette
-	regs.PaletteData.Set([4]uint8{0, 1, 2, 3})
+	regs.TilePalette.Set([4]uint8{0, 1, 2, 3})
 
 	ppuUnit := NewPPU(vramModule, oamModule, regs, ie)
 

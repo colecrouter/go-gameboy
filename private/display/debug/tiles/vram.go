@@ -49,7 +49,7 @@ func (t *TileMenu) Clock() {
 			if tile == nil {
 				continue
 			}
-			tileImage := tile.Image()
+			tileImage := tile.Pixels()
 			if tileImage == nil {
 				continue
 			}
@@ -61,7 +61,12 @@ func (t *TileMenu) Clock() {
 			// copy tile pixels into the image
 			for y := 0; y < TILE_SIZE; y++ {
 				for x := 0; x < TILE_SIZE; x++ {
-					t.img.Set(offsetX+x, offsetY+y, tileImage.At(x, y))
+					// get the color index for this pixel
+					colorIndex := tileImage[y*TILE_SIZE+x]
+					// get the actual color from the palette
+					color := (*t.palette)[colorIndex]
+					// set the pixel in the image
+					t.img.Set(offsetX+x, offsetY+y, color)
 				}
 			}
 		}

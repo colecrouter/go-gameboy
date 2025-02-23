@@ -2,7 +2,7 @@ package memory
 
 import (
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
-	"github.com/colecrouter/gameboy-go/private/memory/vram/sprite"
+	"github.com/colecrouter/gameboy-go/private/memory/vram/drawables/sprite"
 )
 
 type OAM struct {
@@ -10,6 +10,7 @@ type OAM struct {
 
 	buffer      [160]byte // 40 sprites, 4 bytes each
 	vram        *vram.VRAM
+	enable8x16  *bool
 	initialized bool
 }
 
@@ -35,18 +36,19 @@ func (o *OAM) Write(addr uint16, data byte) {
 		o.buffer[index*4+1],
 		o.buffer[index*4+2],
 		o.buffer[index*4+3],
-	})
+	}, o.enable8x16)
 }
 
 func (o *OAM) ReadSprite(index int) *sprite.Sprite {
 	var arr [4]byte
 	copy(arr[:], o.buffer[index*4:index*4+4])
-	return sprite.NewSprite(o.vram, arr)
+	return sprite.NewSprite(o.vram, arr, o.enable8x16)
 }
 
-func NewOAM(vram *vram.VRAM) *OAM {
+func NewOAM(vram *vram.VRAM, enable8x16 *bool) *OAM {
 	return &OAM{
 		vram:        vram,
+		enable8x16:  enable8x16,
 		initialized: true,
 	}
 }
