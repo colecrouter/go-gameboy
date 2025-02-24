@@ -3,51 +3,13 @@ package system
 import (
 	"log"
 	"os"
-	"runtime/pprof"
 	"testing"
 	"time"
 
 	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
 )
 
-func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
-	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/01-special.gb")
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-
-	game := gamepak.NewGamePak(f)
-	gb := NewGameBoy()
-	gb.FastMode = true
-	gb.CartridgeReader.InsertCartridge(game)
-
-	profFile, err := os.Create("cpu.prof")
-	if err != nil {
-		b.Fatal(err)
-	}
-	err = pprof.StartCPUProfile(profFile)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ResetTimer()
-
-	go gb.Start(true)
-
-	for {
-		// Wait until CPU passes the boot ROM (PC > 0xFF).
-		if gb.CPU.Registers.PC > 0xFF {
-			gb.Stop()
-			break
-		}
-	}
-	b.Logf("Boot ROM completed. Cycles processed: %d", gb.totalCycles)
-
-	pprof.StopCPUProfile()
-	profFile.Close()
-}
-
-// Renamed existing benchmark to clarify its purpose
+// BenchmarkGameBoy_CycleAccurateOneSecond benchmarks the GameBoy's performance by running it for 1 second
 func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	f, err := os.ReadFile("../../tests/blargg/cpu_instrs/cpu_instrs.gb")
 	if err != nil {
@@ -75,7 +37,7 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
 }
 
-// Updated test for Blargg CPUInstrs using the reusable runner.
+// TestGameBoy_BlarggCPUInstrs runs the Blargg CPU instruction tests
 func TestGameBoy_BlarggCPUInstrs(t *testing.T) {
 	dir := "../../tests/blargg/cpu_instrs/individual/"
 	files, err := os.ReadDir(dir)
@@ -92,7 +54,7 @@ func TestGameBoy_BlarggCPUInstrs(t *testing.T) {
 	}
 }
 
-// New test for instr_timing ROM
+// TestGameBoy_BlarggInstrTiming runs the Blargg instruction timing test
 func TestGameBoy_BlarggInstrTiming(t *testing.T) {
 	RunBlarggTestRom(t, "../../tests/blargg/instr_timing/instr_timing.gb")
 }

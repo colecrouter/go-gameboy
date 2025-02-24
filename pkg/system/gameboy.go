@@ -191,3 +191,7 @@ func (gb *GameBoy) ConnectSerialDevice(d registers.SerialDevice) {
 func (gb *GameBoy) Controller() *registers.JoyPad {
 	return &gb.IO.JoypadState
 }
+
+func (gb *GameBoy) TotalCycles() uint64 {
+	return gb.totalCycles
+}

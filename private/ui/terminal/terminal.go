@@ -46,7 +46,7 @@ func NewApplication(gb *system.GameBoy) *Application {
 	return app
 }
 
-func (a *Application) Run() {
+func (a *Application) Run(skipBootROM bool) {
 	// Set terminal to raw mode.
 	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
 	// Defer terminal restoration in the main goroutine.
@@ -62,7 +62,7 @@ func (a *Application) Run() {
 				panicChan <- r
 			}
 		}()
-		a.gb.Start(true)
+		a.gb.Start(skipBootROM)
 	}()
 
 	// Redirect stdout and stderr to the log menu.

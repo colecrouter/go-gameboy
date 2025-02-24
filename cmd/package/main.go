@@ -22,5 +22,5 @@ func main() {
 
 	app := terminal.NewApplication(gb)
 
-	app.Run()
+	app.Run(true)
 }
