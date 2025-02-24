@@ -37,5 +37,6 @@ func (cr *CartridgeReader) Read(addr uint16) uint8 {
 
 func (cr *CartridgeReader) Write(addr uint16, val uint8) {
 	// TODO implement cartridge write protection
-	cr.cartridge.Write(addr, val)
+	// cr.cartridge.Write(addr, val)
+	// panic("Cartridge write protection not implemented")
 }

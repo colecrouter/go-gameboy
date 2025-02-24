@@ -81,7 +81,7 @@ func (c *LR35902) Step() int {
 	// 	fmt.Printf("")
 	// }
 
-	if c.Registers.PC == 0x1446 {
+	if c.Registers.PC == 0x0a9b {
 		// Load stack for debugging
 		var stack [63]uint16
 		for j := 0; j < len(stack); j++ {

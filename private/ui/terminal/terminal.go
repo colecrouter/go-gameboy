@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/signal"
+	"os/signal" // added import
 	"syscall"
 	"time"
 
@@ -52,14 +52,14 @@ func (a *Application) Run(skipBootROM bool) {
 	// Defer terminal restoration in the main goroutine.
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-	// Create a panic channel.
-	panicChan := make(chan interface{}, 1)
-
 	// Start the GameBoy runtime in a goroutine with panic recovery.
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				panicChan <- r
+				// Restore terminal before printing panic stack trace.
+				term.Restore(int(os.Stdin.Fd()), oldState)
+
+				panic(r)
 			}
 		}()
 		a.gb.Start(skipBootROM)
@@ -129,6 +129,12 @@ Loop:
 
 			// Handle quit key.
 			if key == "q" {
+				// Stop the GameBoy runtime.
+				a.gb.Stop()
+
+				// Clear the screen.
+				fmt.Print("\033[H\033[2J")
+
 				break Loop
 			}
 
@@ -160,18 +166,8 @@ Loop:
 			joy.SetButton(butt, true)
 		case <-sigChan:
 			break Loop
-
-		case <-panicChan:
-			// Optionally log p
-			break Loop
 		}
 	}
-
-	// Stop the GameBoy runtime.
-	a.gb.Stop()
-
-	// Clear the screen.
-	fmt.Print("\033[H\033[2J")
 }
 
 func (a *Application) render() {
