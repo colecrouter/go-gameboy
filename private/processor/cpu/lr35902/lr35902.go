@@ -1,10 +1,9 @@
 package lr35902
 
 import (
-	"fmt"
-
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 // LR35902 is the original GameBoy CPU
@@ -24,11 +23,12 @@ type LR35902 struct {
 	eiDelay int
 	lastPC  uint16
 	halted  bool
+	clock   <-chan struct{}
 }
 
-// Step executes the next instruction in the CPU's memory.
-// Returns the number of clock cycles the instruction took.
-func (c *LR35902) Step() int {
+// step executes the next instruction in the CPU's memory.
+// Returns the number of T-cycles the instruction took.
+func (c *LR35902) MClock() {
 	if !c.initialized {
 		panic("CPU not initialized")
 	}
@@ -55,19 +55,24 @@ func (c *LR35902) Step() int {
 		}
 	}
 
-	// Check for HALT mode
-	if c.halted {
-		// We need to return 4 cycles here so that the CPU still runs and checks for interrupts
-		// If we return 0, the process will hang, as it will continue to clock empty cycles without stopping or checking for interrupts
-		return 4
-	}
-
-	// Get instruction
-	opcode := c.bus.Read(c.Registers.PC)
-
-	// Run instruction
 	var instruction instruction
 	var mnemonic string
+	var op func(*LR35902)
+	var opcode uint8
+
+	// Check for HALT mode
+	if c.halted {
+		// We need to process a cycle here so that the CPU still runs and checks for interrupts
+		// If we return 0, the process will hang, as it will continue to clock empty cycles without stopping or checking for interrupts
+		<-c.clock
+
+		// Skip the instruction execution stage
+		return
+	}
+
+	// Fetch the next instruction
+	opcode = c.bus.Read(c.Registers.PC)
+
 	if c.cb {
 		instruction = cbInstructions[opcode]
 		mnemonic = getCBMnemonic(opcode)
@@ -77,56 +82,68 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
-	// if c.Registers.PC >= 0x7000 && c.Registers.PC < 0x9FFF {
-	// 	fmt.Printf("")
-	// }
-
-	if c.Registers.PC == 0x0a9b {
-		// Load stack for debugging
-		var stack [63]uint16
-		for j := 0; j < len(stack); j++ {
-			offset := c.Registers.SP + uint16(j*2)
-			if offset > 0xFFFE {
-				break
-			}
-			stack[j] = toRegisterPair(c.bus.Read16(offset))
-		}
-		fmt.Printf("")
-	}
-
 	_ = mnemonic
 
-	op := instruction.op
-	cycles := instruction.c
-	increment := instruction.p
+	op = instruction.op
 
 	c.lastPC = c.Registers.PC
-	if op == nil {
-		fmt.Printf("Unimplemented instruction: 0x%02X\r\n", opcode)
-		c.Registers.PC++
-	} else {
-		op(c)
-		c.Registers.PC += uint16(increment)
-	}
 
-	// Delay EI effect: Decrement counter at the very end of the instruction.
+	// Execute instruction
+	op(c)
+
+	// We don't clock here, because the fetch stage overlaps with the previous instruction's execute stage
+
+	// Update DI and EI delay
 	if c.eiDelay > 0 {
 		c.eiDelay--
 		if c.eiDelay == 0 {
 			c.ime = true
-			// (Optional log: fmt.Printf("IME enabled at PC: 0x%04X\n", c.registers.pc))
 		}
 	}
 
-	return cycles
+	c.Registers.PC++
+	<-c.clock
 }
 
-func NewLR35902(bus *memory.Bus, ioRegisters *registers.Registers, ie *registers.Interrupt) *LR35902 {
+func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *registers.Registers, ie *registers.Interrupt) *LR35902 {
 	cpu := &LR35902{initialized: true}
 
+	if broadcaster != nil {
+		cpu.clock = broadcaster.SubscribeM()
+	}
 	cpu.bus = bus
 	cpu.io = ioRegisters
 	cpu.ie = ie
 
 	return cpu
+}
+
+func (c *LR35902) Run(close <-chan struct{}) {
+	if !c.initialized {
+		panic("CPU not initialized")
+	}
+
+	for {
+		select {
+		case <-close:
+			return
+		default:
+			c.MClock()
+		}
+	}
+}
+
+func (c *LR35902) Read(addr uint16) byte {
+	val := c.bus.Read(addr)
+	c.Registers.PC++
+	<-c.clock
+	return val
+}
+
+func (c *LR35902) Read16(addr uint16) (high, low uint8) {
+	high, low = c.bus.Read16(addr)
+	c.Registers.PC += 2
+	<-c.clock
+	<-c.clock
+	return high, low
 }

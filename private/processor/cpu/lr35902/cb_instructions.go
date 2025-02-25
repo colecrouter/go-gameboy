@@ -82,7 +82,6 @@ func generateCbInstructions() [0x100]instruction {
 	CBInstructions := [0x100]instruction{}
 
 	// Register mapping: indices 0-7 correspond to B, C, D, E, H, L, (HL), A.
-	// nil indicates (HL) which is handled specially.
 	regMapping := func(c *LR35902) [8]*uint8 {
 		return [8]*uint8{
 			&c.Registers.B,
@@ -91,7 +90,7 @@ func generateCbInstructions() [0x100]instruction {
 			&c.Registers.E,
 			&c.Registers.H,
 			&c.Registers.L,
-			nil, // (HL)
+			nil, // (HL) handled specially below
 			&c.Registers.A,
 		}
 	}
@@ -107,18 +106,18 @@ func generateCbInstructions() [0x100]instruction {
 				gen := firstHalfCbInstructionsHelper[y]
 				if x == 6 {
 					CBInstructions[opcode] = instruction{
-						c: 16,
 						p: 1,
 						op: func(c *LR35902) {
 							addr := toRegisterPair(c.Registers.H, c.Registers.L)
 							val := c.bus.Read(addr)
+							<-c.clock // wait for memory read
 							gen(&val)(c)
 							c.bus.Write(addr, val)
+							<-c.clock // wait for memory write
 						},
 					}
 				} else {
 					CBInstructions[opcode] = instruction{
-						c: 8,
 						p: 1,
 						op: func(c *LR35902) {
 							regs := regMapping(c)
@@ -132,18 +131,18 @@ func generateCbInstructions() [0x100]instruction {
 				gen := secondHalfCbInstructionsHelper[y]
 				if x == 14 {
 					CBInstructions[opcode] = instruction{
-						c: 16,
 						p: 1,
 						op: func(c *LR35902) {
 							addr := toRegisterPair(c.Registers.H, c.Registers.L)
 							val := c.bus.Read(addr)
+							<-c.clock // wait for memory read
 							gen(&val)(c)
 							c.bus.Write(addr, val)
+							<-c.clock // wait for memory write
 						},
 					}
 				} else {
 					CBInstructions[opcode] = instruction{
-						c: 8,
 						p: 1,
 						op: func(c *LR35902) {
 							regs := regMapping(c)

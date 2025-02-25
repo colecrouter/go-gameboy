@@ -1,5 +1,7 @@
 package registers
 
+import "github.com/colecrouter/gameboy-go/private/system"
+
 type Timer struct {
 	Divider uint16       // FF04 - DIV
 	Counter uint8        // FF05 - TIMA
@@ -12,6 +14,8 @@ type Timer struct {
 	// Synchronization state.
 	prevBit  bool
 	overflow bool
+
+	clock <-chan struct{}
 }
 
 func (t *Timer) Read(addr uint16) uint8 {
@@ -110,9 +114,29 @@ func (t *Timer) MClock() {
 	}
 }
 
-func NewTimer(interrupt *Interrupt) *Timer {
+func (t *Timer) Run(close <-chan struct{}) {
+	if !t.initialized {
+		panic("CPU not initialized")
+	}
+
+	for {
+		select {
+		case <-close:
+			return
+		default:
+			t.MClock()
+		}
+	}
+}
+
+func NewTimer(broadcaster *system.Broadcaster, interrupt *Interrupt) *Timer {
 	timer := &Timer{initialized: true}
 	timer.interruptFlags = interrupt
+
+	if broadcaster != nil {
+		timer.clock = broadcaster.SubscribeM()
+	}
+
 	return timer
 }
 

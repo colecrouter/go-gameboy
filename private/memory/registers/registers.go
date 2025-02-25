@@ -2,6 +2,7 @@ package registers
 
 import (
 	"github.com/colecrouter/gameboy-go/private/memory"
+	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 type Registers struct {
@@ -54,12 +55,12 @@ $FF68	$FF6B	CGB	BG / OBJ Palettes
 $FF70		CGB	WRAM Bank Select
 */
 
-func NewRegisters(bus memory.Device, ir *Interrupt) *Registers {
+func NewRegisters(broadcaster *system.Broadcaster, bus memory.Device, ir *Interrupt) *Registers {
 	return &Registers{
 		bus:           bus,
 		initialized:   true,
 		Serial:        *NewSerialTransfer(ir),
-		Timer:         *NewTimer(ir),
+		Timer:         *NewTimer(broadcaster, ir),
 		JoypadState:   *NewJoyPad(ir),
 		InterruptFlag: ir,
 	}

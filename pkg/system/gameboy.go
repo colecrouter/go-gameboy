@@ -10,6 +10,7 @@ import (
 	"github.com/colecrouter/gameboy-go/private/processor/ppu"
 	"github.com/colecrouter/gameboy-go/private/reader"
 	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
+	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 const CLOCK_SPEED = 4_194_304 // 4.194304 MHz
@@ -33,18 +34,22 @@ type GameBoy struct {
 
 	done        chan struct{}
 	totalCycles uint64 // added to track CPU cycles
+	broadcaster *system.Broadcaster
 	FastMode    bool
 }
 
 func NewGameBoy() *GameBoy {
 	gb := &GameBoy{}
+
+	gb.broadcaster = system.NewBroadcaster()
+
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
 	gb.IF = &registers.Interrupt{}
 	gb.IE = &registers.Interrupt{}
-	gb.IO = registers.NewRegisters(gb.Bus, gb.IF)
+	gb.IO = registers.NewRegisters(gb.broadcaster, gb.Bus, gb.IF)
 	oamModule := memory.NewOAM(gb.VRAM, &gb.IO.LCDControl.Sprites8x16)
-	gb.CPU = lr35902.NewLR35902(gb.Bus, gb.IO, gb.IE)
+	gb.CPU = lr35902.NewLR35902(gb.broadcaster, gb.Bus, gb.IO, gb.IE)
 	gb.CartridgeReader = *reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
 	gb.done = make(chan struct{}) // initialize done channel
@@ -64,7 +69,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, gb.IE)                                      // Interrupt Enable Register
 
-	gb.PPU = ppu.NewPPU(gb.VRAM, oamModule, gb.IO, gb.IF)
+	gb.PPU = ppu.NewPPU(gb.broadcaster, gb.VRAM, oamModule, gb.IO, gb.IF)
 
 	return gb
 }
@@ -135,6 +140,10 @@ func (gb *GameBoy) Start(skip bool) {
 		gb.IO.Write(0xFF, 0x00) // Interrupt Enable Register
 	}
 
+	go gb.CPU.Run(gb.done)
+	go gb.PPU.Run(gb.done)
+	go gb.IO.Timer.Run(gb.done)
+
 	for {
 		frameStart := time.Now()
 
@@ -144,17 +153,12 @@ func (gb *GameBoy) Start(skip bool) {
 		default:
 			cycles := 0
 			for cycles < TARGET_CYCLES_PER_FRAME {
-				stepCycles := gb.CPU.Step()
-				gb.totalCycles += uint64(stepCycles)
-				cycles += stepCycles
-				for i := 0; i < stepCycles; i++ {
+				for i := range 4 {
+					if i == 0 {
+						gb.broadcaster.BroadcastM()
+					}
 
-					gb.PPU.SystemClock()
-				}
-
-				for i := 0; i < stepCycles/4; i++ {
-					// Technicially this is an issue, because Timer.Clock() should happen before CPU.Step()
-					gb.IO.Timer.MClock()
+					gb.broadcaster.BroadcastT()
 				}
 			}
 		}
@@ -173,7 +177,7 @@ func (gb *GameBoy) Start(skip bool) {
 }
 
 func (gb *GameBoy) Stop() {
-	gb.done <- struct{}{}
+	close(gb.done)
 }
 
 func (gb *GameBoy) PC() uint16 {

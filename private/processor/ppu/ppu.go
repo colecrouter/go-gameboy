@@ -8,6 +8,7 @@ import (
 	"github.com/colecrouter/gameboy-go/private/memory/registers"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/layers"
+	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 type PPU struct {
@@ -17,6 +18,7 @@ type PPU struct {
 	registers        *registers.Registers
 	lineCycleCounter uint16
 	image            *image.Paletted
+	clock            <-chan struct{}
 }
 
 const (
@@ -35,13 +37,14 @@ const (
 	visibleColumns = 160
 )
 
-func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie *registers.Interrupt) *PPU {
+func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie *registers.Interrupt) *PPU {
 	return &PPU{
 		interrupt: ie,
 		vram:      vram,
 		oam:       oam,
 		registers: registers,
 		image:     image.NewPaletted(image.Rect(0, 0, visibleColumns, visibleLines), monochrome.Palette),
+		clock:     broadcaster.SubscribeT(),
 	}
 }
 
@@ -56,8 +59,8 @@ func NewPPU(vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie
          10 l
 */
 
-// SystemClock emulates one PPU cycle.
-func (p *PPU) SystemClock() {
+// TClock emulates one PPU cycle.
+func (p *PPU) TClock() {
 	if p.registers.LY >= visibleLines {
 		p.registers.LCDStatus.PPUMode = registers.VBlank
 		if p.registers.LY == visibleLines {
@@ -85,6 +88,8 @@ func (p *PPU) SystemClock() {
 	if p.registers.LY == TotalLinesPerFrame {
 		p.registers.LY = 0
 	}
+
+	<-p.clock
 }
 
 // compositeImage overlays src onto dst; it assumes pixel value 0 is transparent.
@@ -128,4 +133,15 @@ func (p *PPU) DisplayClock() {
 
 func (p *PPU) Image() image.Image {
 	return p.image
+}
+
+func (p *PPU) Run(close <-chan struct{}) {
+	for {
+		select {
+		case <-close:
+			return
+		default:
+			p.TClock()
+		}
+	}
 }

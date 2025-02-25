@@ -5,7 +5,7 @@ import "testing"
 func TestOverflowBehavior_NoWrite(t *testing.T) {
 	// Cycle A: natural overflow.
 	intr := &Interrupt{}
-	timer := NewTimer(intr)
+	timer := NewTimer(nil, intr)
 	timer.Control.Enabled = true
 	timer.Control.Speed = M4
 	timer.Divider = 0x2E
@@ -40,7 +40,7 @@ func TestOverflowBehavior_NoWrite(t *testing.T) {
 func TestWriteTIMA_CycleA(t *testing.T) {
 	// Cycle A: Writing to TIMA cancels the overflow.
 	intr := &Interrupt{}
-	timer := NewTimer(intr)
+	timer := NewTimer(nil, intr)
 	timer.Control.Enabled = true
 	timer.Control.Speed = M4
 	timer.Divider = 0x2C
@@ -71,7 +71,7 @@ func TestWriteTIMA_CycleA(t *testing.T) {
 func TestWriteTMA_CycleB(t *testing.T) {
 	// Cycle A: natural overflow occurs.
 	intr := &Interrupt{}
-	timer := NewTimer(intr)
+	timer := NewTimer(nil, intr)
 	timer.Control.Enabled = true
 	timer.Control.Speed = M4
 	timer.Divider = 0x2C

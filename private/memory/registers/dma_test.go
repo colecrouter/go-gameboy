@@ -32,7 +32,7 @@ func TestDMA(t *testing.T) {
 	}
 
 	// Create Registers instance manually.
-	regs := NewRegisters(fakeBus, nil)
+	regs := NewRegisters(nil, fakeBus, nil)
 
 	// Trigger DMA transfer; passing 0x80 -> source = 0x80 << 8 = 0x8000.
 	regs.Write(0x46, 0x80)

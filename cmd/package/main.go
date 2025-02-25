@@ -14,6 +14,7 @@ func main() {
 
 	romData, err := os.ReadFile("tetris.gb")
 	// romData, err := os.ReadFile("./tests/blargg/instr_timing/instr_timing.gb")
+	// romData, err := os.ReadFile("./tests/blargg/interrupt_time/interrupt_time.gb")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -22,5 +23,5 @@ func main() {
 
 	app := terminal.NewApplication(gb)
 
-	app.Run(true)
+	app.Run(false)
 }

@@ -8,7 +8,7 @@ import (
 
 func TestRegistersTableReadWrite(t *testing.T) {
 	fb := &FakeBus{}
-	regs := NewRegisters(fb, nil)
+	regs := NewRegisters(nil, fb, nil)
 
 	// Define test cases per predefined register address.
 	// For read/write registers we expect the read value to match the written one (or its converted form).
