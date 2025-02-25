@@ -12,13 +12,16 @@ type SerialDevice interface {
 }
 
 type SerialTransfer struct {
-	EnableTransfer bool
-	TransferRate   TransferRate
-	Master         bool
+	// 0xFF01 (SB)
+	value uint8
+
+	// 0xFF02
+	EnableTransfer bool         // Bit 7
+	TransferRate   TransferRate // Bit 1
+	Master         bool         // Bit 0
 
 	connected SerialDevice
 	interrupt *Interrupt
-	value     uint8
 } // 0xFF01-0xFF02
 
 func NewSerialTransfer(interupt *Interrupt) *SerialTransfer {
@@ -72,14 +75,18 @@ func (s *SerialTransfer) Connect(device SerialDevice) {
 }
 
 func (s *SerialTransfer) transfer() {
-	if s.connected != nil {
+	// If no device is connected, mimic hardware by doing nothing active.
+	if s.connected == nil {
+		// On hardware SB remains idle; many emulators choose 0x00 as the idle value.
+		s.value = 0x00
+	} else {
 		s.value = s.connected.Transfer(s.value)
 	}
 
-	// Clear transfer bit
+	// Clear the transfer enable flag immediately.
 	s.EnableTransfer = false
 
-	// Trigger interupt
+	// Trigger serial interrupt, as hardware would signal the end of transfer.
 	if s.interrupt != nil {
 		s.interrupt.Serial = true
 	}
