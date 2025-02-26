@@ -8,7 +8,7 @@ import (
 
 // Helpers
 func (c *LR35902) GetImmediate8() uint8 {
-	val := c.Read(c.registers.PC + 1)
+	val := c.bus.Read(c.registers.PC + 1)
 
 	<-c.clock        // Use an additional m-cycle to read the immediate value
 	c.registers.PC++ // Increment the program counter to the next instruction
@@ -17,8 +17,9 @@ func (c *LR35902) GetImmediate8() uint8 {
 }
 
 func (c *LR35902) GetImmediate16() uint16 {
-	high, low := c.Read16(c.registers.PC + 1)
+	high, low := c.bus.Read16(c.registers.PC + 1)
 
+	<-c.clock           // Use an additional m-cycle to read the immediate value
 	<-c.clock           // Use an additional m-cycle to read the immediate value
 	c.registers.PC += 2 // Increment the program counter to the next instruction
 
@@ -26,14 +27,14 @@ func (c *LR35902) GetImmediate16() uint16 {
 }
 
 func (c *LR35902) Read(addr uint16) byte {
-	val := c.Read(addr)
+	val := c.bus.Read(addr)
 	c.registers.PC++
 	<-c.clock
 	return val
 }
 
 func (c *LR35902) Read16(addr uint16) (high, low uint8) {
-	high, low = c.Read16(addr)
+	high, low = c.bus.Read16(addr)
 	c.registers.PC += 2
 	<-c.clock
 	<-c.clock
@@ -42,14 +43,14 @@ func (c *LR35902) Read16(addr uint16) (high, low uint8) {
 
 // Write writes a byte to the given address
 func (c *LR35902) Write(addr uint16, val byte) {
-	c.Write(addr, val)
+	c.bus.Write(addr, val)
 	c.registers.PC++
 	<-c.clock
 }
 
 // Write16 writes a 16-bit value to the given address
 func (c *LR35902) Write16(addr uint16, val uint16) {
-	c.Write16(addr, val)
+	c.bus.Write16(addr, val)
 	c.registers.PC += 2
 	<-c.clock
 	<-c.clock
