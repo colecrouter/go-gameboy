@@ -27,15 +27,17 @@ func jumpRelative(c cpu.CPU, offset int8, condition bool) {
 func ret(c cpu.CPU, condition bool) {
 	if !condition {
 		c.Clock()
+		// Reverse the PC increment caused by Clock() so that PC remains unchanged.
+		c.Registers().PC--
 		return
 	}
 
-	// Pop the return address in little endian order.
+	// Pop the return address in little-endian order.
 	high, low := c.Read16(c.Registers().SP)
 	c.Registers().SP += 2
 
 	addr := cpu.ToRegisterPair(high, low)
-	c.Registers().PC = addr - 1 // Assign popped address directly
+	c.Registers().PC = addr - 1 // Adjust for later PC increment
 }
 
 func call(c cpu.CPU, addr uint16, condition bool) {

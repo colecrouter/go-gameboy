@@ -1032,8 +1032,7 @@ var Instructions = [0x100]Instruction{
 	// INVALID
 	// PUSH AF
 	0xF5: {P: 1, OP: func(c cpu.CPU) {
-		reg := c.Flags().Read()
-		push16(c, c.Registers().A, reg)
+		push16(c, c.Registers().A, c.Flags().Read())
 	}},
 	// OR d8
 	0xF6: {P: 2, OP: func(c cpu.CPU) {

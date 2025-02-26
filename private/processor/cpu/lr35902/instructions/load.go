@@ -16,17 +16,33 @@ func load16(c cpu.CPU, high, low *uint8, val uint16) {
 }
 
 func loadHLSPOffset(c cpu.CPU, offset int8) {
-	result := c.Registers().SP + uint16(int16(offset))
+	sp := c.Registers().SP
+	// Sign-extend offset correctly.
+	result := sp + uint16(int16(offset))
+
 	var hc, carry = flags.Reset, flags.Reset
 
-	if (c.Registers().SP&0xF)+(uint16(uint8(offset))&0xF) > 0xF {
-		hc = flags.Set
-	}
-	if (c.Registers().SP&0xFF)+(uint16(uint8(offset))) > 0xFF {
-		carry = flags.Set
+	if offset >= 0 {
+		// For positive offset, use unsigned addition on lower nibbles and bytes.
+		if (sp&0xF)+(uint16(offset)&0xF) > 0xF {
+			hc = flags.Set
+		}
+		if (sp&0xFF)+(uint16(offset)&0xFF) > 0xFF {
+			carry = flags.Set
+		}
+	} else {
+		// For negative offset, convert using proper sign extension.
+		pos := uint16(-int16(offset))
+		// A borrow occurs if (SP & 0xF) is less than (pos & 0xF).
+		if (sp & 0xF) < (pos & 0xF) {
+			hc = flags.Set
+		}
+		if (sp & 0xFF) < (pos & 0xFF) {
+			carry = flags.Set
+		}
 	}
 
-	// Load computed result into HL and update flags: Z and N reset.
+	// Store result in HL and update flags: Z and N reset.
 	c.Registers().H, c.Registers().L = cpu.FromRegisterPair(result)
 	c.Flags().Set(flags.Reset, flags.Reset, hc, carry)
 }
