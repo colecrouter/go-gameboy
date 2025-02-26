@@ -1,4 +1,4 @@
-package registers
+package io
 
 import "github.com/colecrouter/gameboy-go/private/system"
 

@@ -4,7 +4,7 @@ import (
 	"image"
 
 	"github.com/colecrouter/gameboy-go/private/display/monochrome"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/drawables/tile"
 )
@@ -12,12 +12,12 @@ import (
 // WindowLayer represents the window (foreground) layer.
 type WindowLayer struct {
 	vram        *vram.VRAM
-	registers   *registers.Registers
+	registers   *io.Registers
 	visibleSize image.Rectangle
 }
 
 // NewWindowLayer creates a new WindowLayer.
-func NewWindowLayer(v *vram.VRAM, regs *registers.Registers, bounds image.Rectangle) *WindowLayer {
+func NewWindowLayer(v *vram.VRAM, regs *io.Registers, bounds image.Rectangle) *WindowLayer {
 	return &WindowLayer{
 		vram:        v,
 		registers:   regs,

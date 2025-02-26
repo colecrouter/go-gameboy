@@ -5,7 +5,7 @@ import (
 
 	"github.com/colecrouter/gameboy-go/private/display/monochrome"
 	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/drawables/tile"
 )
@@ -33,12 +33,12 @@ func transformPixels(pixels []uint8, width, height int, flipX, flipY bool) []uin
 type SpriteLayer struct {
 	oam         *memory.OAM
 	vram        *vram.VRAM
-	registers   *registers.Registers
+	registers   *io.Registers
 	visibleSize image.Rectangle
 }
 
 // NewSpriteLayer creates a new SpriteLayer.
-func NewSpriteLayer(o *memory.OAM, v *vram.VRAM, regs *registers.Registers, bounds image.Rectangle) *SpriteLayer {
+func NewSpriteLayer(o *memory.OAM, v *vram.VRAM, regs *io.Registers, bounds image.Rectangle) *SpriteLayer {
 	return &SpriteLayer{
 		oam:         o,
 		vram:        v,

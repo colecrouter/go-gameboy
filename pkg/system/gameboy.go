@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/lr35902"
 	"github.com/colecrouter/gameboy-go/private/processor/ppu"
@@ -24,18 +24,18 @@ const TARGET_CYCLES_PER_FRAME = CLOCK_SPEED / DISPLAY_SPEED
 
 type GameBoy struct {
 	Bus             *memory.Bus
-	IO              *registers.Registers
+	IO              *io.Registers
 	CPU             *lr35902.LR35902
 	PPU             *ppu.PPU
 	VRAM            *vram.VRAM
 	CartridgeReader reader.CartridgeReader
-	IF              *registers.Interrupt
-	IE              *registers.Interrupt
+	IF              *io.Interrupt
+	IE              *io.Interrupt
 
-	done        chan struct{}
-	totalCycles uint64 // added to track CPU cycles
-	broadcaster *system.Broadcaster
-	FastMode    bool
+	done         chan struct{}
+	totalTCycles uint64
+	broadcaster  *system.Broadcaster
+	FastMode     bool
 }
 
 func NewGameBoy() *GameBoy {
@@ -45,9 +45,9 @@ func NewGameBoy() *GameBoy {
 
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
-	gb.IF = &registers.Interrupt{}
-	gb.IE = &registers.Interrupt{}
-	gb.IO = registers.NewRegisters(gb.broadcaster, gb.Bus, gb.IF)
+	gb.IF = &io.Interrupt{}
+	gb.IE = &io.Interrupt{}
+	gb.IO = io.NewRegisters(gb.broadcaster, gb.Bus, gb.IF)
 	oamModule := memory.NewOAM(gb.VRAM, &gb.IO.LCDControl.Sprites8x16)
 	gb.CPU = lr35902.NewLR35902(gb.broadcaster, gb.Bus, gb.IO, gb.IE)
 	gb.CartridgeReader = *reader.NewCartridgeReader(&gb.IO.DisableBootROM)
@@ -76,20 +76,23 @@ func NewGameBoy() *GameBoy {
 
 func (gb *GameBoy) Start(skip bool) {
 	if skip {
+		reg := gb.CPU.Registers()
+
 		// Initialize registers to default DMG ROM values
 		// https://gbdev.io/pandocs/Power_Up_Sequence.html#cpu-registers
-		gb.CPU.Registers.PC = 0x0100
+		reg.PC = 0x0100
 
-		gb.CPU.Registers.B = 0x00
-		gb.CPU.Registers.A = 0x01
-		gb.CPU.Registers.C = 0x13
-		gb.CPU.Registers.D = 0x00
-		gb.CPU.Registers.E = 0xD8
-		gb.CPU.Registers.H = 0x01
-		gb.CPU.Registers.L = 0x4D
-		gb.CPU.Registers.SP = 0xFFFE
+		reg.B = 0x00
+		reg.A = 0x01
+		reg.C = 0x13
+		reg.D = 0x00
+		reg.E = 0xD8
+		reg.H = 0x01
+		reg.L = 0x4D
+		reg.SP = 0xFFFE
 
-		gb.CPU.Flags.Write(0xB0)
+		fl := gb.CPU.Flags()
+		fl.Write(0xB0)
 
 		gb.IO.Write(0x00, 0xCF) // Joypad input
 		gb.IO.Write(0x01, 0x00) // Serial transfer
@@ -151,8 +154,7 @@ func (gb *GameBoy) Start(skip bool) {
 		case <-gb.done:
 			return
 		default:
-			cycles := 0
-			for cycles < TARGET_CYCLES_PER_FRAME {
+			for range TARGET_CYCLES_PER_FRAME {
 				for i := range 4 {
 					if i == 0 {
 						gb.broadcaster.BroadcastM()
@@ -160,6 +162,7 @@ func (gb *GameBoy) Start(skip bool) {
 
 					gb.broadcaster.BroadcastT()
 				}
+				gb.totalTCycles += 4
 			}
 		}
 
@@ -181,21 +184,21 @@ func (gb *GameBoy) Stop() {
 }
 
 func (gb *GameBoy) PC() uint16 {
-	return gb.CPU.Registers.PC
+	return gb.CPU.Registers().PC
 }
 
 func (gb *GameBoy) InsertCartridge(game *gamepak.GamePak) {
 	gb.CartridgeReader.InsertCartridge(game)
 }
 
-func (gb *GameBoy) ConnectSerialDevice(d registers.SerialDevice) {
+func (gb *GameBoy) ConnectSerialDevice(d io.SerialDevice) {
 	gb.IO.Serial.Connect(d)
 }
 
-func (gb *GameBoy) Controller() *registers.JoyPad {
+func (gb *GameBoy) Controller() *io.JoyPad {
 	return &gb.IO.JoypadState
 }
 
 func (gb *GameBoy) TotalCycles() uint64 {
-	return gb.totalCycles
+	return gb.totalTCycles
 }

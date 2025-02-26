@@ -4,16 +4,16 @@ import (
 	"fmt"
 
 	"github.com/colecrouter/gameboy-go/private/display"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/ui/terminal/utils"
 )
 
 type LogMenu struct {
 	config display.Config
-	reg    *registers.Registers
+	reg    *io.Registers
 }
 
-func NewLogMenu(r *registers.Registers) *LogMenu {
+func NewLogMenu(r *io.Registers) *LogMenu {
 	return &LogMenu{reg: r, config: display.Config{Width: 48 * utils.CHAR_WIDTH, Title: "Registers", Height: 12 * utils.CHAR_HEIGHT}}
 }
 

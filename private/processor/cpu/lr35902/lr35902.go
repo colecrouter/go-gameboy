@@ -2,28 +2,28 @@ package lr35902
 
 import (
 	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/lr35902/instructions"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/registers"
 	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 // LR35902 is the original GameBoy CPU
 type LR35902 struct {
 	initialized bool
-	Registers   struct {
-		A, B, C, D, E, H, L uint8
-		SP, PC              uint16
-	}
-	Flags Flags
-
-	bus     *memory.Bus
-	io      *registers.Registers
-	ie      *registers.Interrupt
-	cb      bool
-	ime     bool
-	eiDelay int
-	lastPC  uint16
-	halted  bool
-	clock   <-chan struct{}
+	registers   registers.Registers
+	flags       flags.Flags
+	bus         *memory.Bus
+	io          *io.Registers
+	ie          *io.Interrupt
+	cb          bool
+	ime         bool
+	eiDelay     int
+	lastPC      uint16
+	halted      bool
+	clock       <-chan struct{}
 }
 
 // step executes the next instruction in the CPU's memory.
@@ -55,9 +55,9 @@ func (c *LR35902) MClock() {
 		}
 	}
 
-	var instruction instruction
+	var instruction instructions.Instruction
 	var mnemonic string
-	var op func(*LR35902)
+	var op func(cpu.CPU)
 	var opcode uint8
 
 	// Check for HALT mode
@@ -71,22 +71,22 @@ func (c *LR35902) MClock() {
 	}
 
 	// Fetch the next instruction
-	opcode = c.bus.Read(c.Registers.PC)
+	opcode = c.Read(c.registers.PC)
 
 	if c.cb {
-		instruction = cbInstructions[opcode]
+		instruction = instructions.CBInstructions[opcode]
 		mnemonic = getCBMnemonic(opcode)
 		c.cb = false
 	} else {
-		instruction = instructions[opcode]
+		instruction = instructions.Instructions[opcode]
 		mnemonic = mnemonics[opcode]
 	}
 
 	_ = mnemonic
 
-	op = instruction.op
+	op = instruction.OP
 
-	c.lastPC = c.Registers.PC
+	c.lastPC = c.registers.PC
 
 	// Execute instruction
 	op(c)
@@ -101,11 +101,11 @@ func (c *LR35902) MClock() {
 		}
 	}
 
-	c.Registers.PC++
+	c.registers.PC++
 	<-c.clock
 }
 
-func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *registers.Registers, ie *registers.Interrupt) *LR35902 {
+func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *io.Registers, ie *io.Interrupt) *LR35902 {
 	cpu := &LR35902{initialized: true}
 
 	if broadcaster != nil {
@@ -131,19 +131,4 @@ func (c *LR35902) Run(close <-chan struct{}) {
 			c.MClock()
 		}
 	}
-}
-
-func (c *LR35902) Read(addr uint16) byte {
-	val := c.bus.Read(addr)
-	c.Registers.PC++
-	<-c.clock
-	return val
-}
-
-func (c *LR35902) Read16(addr uint16) (high, low uint8) {
-	high, low = c.bus.Read16(addr)
-	c.Registers.PC += 2
-	<-c.clock
-	<-c.clock
-	return high, low
 }

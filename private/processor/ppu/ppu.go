@@ -5,17 +5,17 @@ import (
 
 	"github.com/colecrouter/gameboy-go/private/display/monochrome"
 	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/layers"
 	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 type PPU struct {
-	interrupt        *registers.Interrupt
+	interrupt        *io.Interrupt
 	vram             *vram.VRAM
 	oam              *memory.OAM
-	registers        *registers.Registers
+	registers        *io.Registers
 	lineCycleCounter uint16
 	image            *image.Paletted
 	clock            <-chan struct{}
@@ -37,7 +37,7 @@ const (
 	visibleColumns = 160
 )
 
-func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, registers *registers.Registers, ie *registers.Interrupt) *PPU {
+func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, registers *io.Registers, ie *io.Interrupt) *PPU {
 	return &PPU{
 		interrupt: ie,
 		vram:      vram,
@@ -62,20 +62,20 @@ func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, r
 // TClock emulates one PPU cycle.
 func (p *PPU) TClock() {
 	if p.registers.LY >= visibleLines {
-		p.registers.LCDStatus.PPUMode = registers.VBlank
+		p.registers.LCDStatus.PPUMode = io.VBlank
 		if p.registers.LY == visibleLines {
 			p.interrupt.VBlank = true
 		}
 	} else {
 		switch p.lineCycleCounter {
 		case 0:
-			p.registers.LCDStatus.PPUMode = registers.OAMScan
+			p.registers.LCDStatus.PPUMode = io.OAMScan
 			p.interrupt.LCD = true
 		case oamScanCycles:
-			p.registers.LCDStatus.PPUMode = registers.Drawing
+			p.registers.LCDStatus.PPUMode = io.Drawing
 			p.interrupt.LCD = true
 		case oamScanCycles + pixelTransferCycles:
-			p.registers.LCDStatus.PPUMode = registers.HBlank
+			p.registers.LCDStatus.PPUMode = io.HBlank
 			p.interrupt.LCD = true
 		}
 	}

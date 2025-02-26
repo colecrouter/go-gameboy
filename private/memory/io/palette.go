@@ -1,4 +1,4 @@
-package registers
+package io
 
 type Palette struct {
 	colors [4]uint8

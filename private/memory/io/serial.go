@@ -1,4 +1,4 @@
-package registers
+package io
 
 type TransferRate uint8
 

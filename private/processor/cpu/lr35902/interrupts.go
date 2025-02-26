@@ -1,24 +1,24 @@
 package lr35902
 
-import "github.com/colecrouter/gameboy-go/private/memory/registers"
+import "github.com/colecrouter/gameboy-go/private/memory/io"
 
 func (c *LR35902) isr(isr ISR) {
 	// STAT interrupt is special
 	if isr == LCDSTATISR {
 		switch c.io.LCDStatus.PPUMode {
-		case registers.HBlank:
+		case io.HBlank:
 			if !c.io.LCDStatus.Mode0Interrupt {
 				return
 			}
-		case registers.VBlank:
+		case io.VBlank:
 			if !c.io.LCDStatus.Mode1Interrupt {
 				return
 			}
-		case registers.OAMScan:
+		case io.OAMScan:
 			if !c.io.LCDStatus.Mode2Interrupt {
 				return
 			}
-		case registers.Drawing:
+		case io.Drawing:
 			if !c.io.LCDStatus.LYCInterrupt {
 				return
 			}
@@ -26,11 +26,11 @@ func (c *LR35902) isr(isr ISR) {
 	}
 
 	// Push PC onto stack
-	c.Registers.SP -= 2
-	c.bus.Write16(c.Registers.SP, c.Registers.PC)
+	c.registers.SP -= 2
+	c.Write16(c.registers.SP, c.registers.PC)
 
 	// Jump to ISR
-	c.Registers.PC = isrAddresses[isr]
+	c.registers.PC = isrAddresses[isr]
 
 	// Disable interrupts
 	c.ime = false

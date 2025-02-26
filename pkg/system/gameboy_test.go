@@ -33,8 +33,8 @@ func BenchmarkGameBoy_CycleAccurateOneSecond(b *testing.B) {
 	gb.Stop()
 
 	expectedCycles := CLOCK_SPEED
-	b.Logf("Total CPU cycles processed: %d, expected: ~%d", gb.totalCycles, expectedCycles)
-	b.ReportMetric(float64(gb.totalCycles)/float64(expectedCycles), "speedFactor")
+	b.Logf("Total CPU cycles processed: %d, expected: ~%d", gb.totalTCycles, expectedCycles)
+	b.ReportMetric(float64(gb.totalTCycles)/float64(expectedCycles), "speedFactor")
 }
 
 // TestGameBoy_BlarggCPUInstrs runs the Blargg CPU instruction tests

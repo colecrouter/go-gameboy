@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"testing"
+	"time"
 
 	"github.com/colecrouter/gameboy-go/pkg/system"
 	"github.com/colecrouter/gameboy-go/private/reader/gamepak"
@@ -37,40 +38,44 @@ func BenchmarkGameBoy_BootROMPerformance(b *testing.B) {
 		app := terminal.NewApplication(gb)
 
 		var profFile *os.File
-		if b.N == 0 {
-			// Start CPU profiling.
-			profFile, err := os.Create("cpu.prof")
-			if err != nil {
-				b.Fatal(err)
-			}
-			err = pprof.StartCPUProfile(profFile)
-			if err != nil {
-				b.Fatal(err)
-			}
+		// if b.N == 0 {
+		// Start CPU profiling.
+		profFile, err := os.Create("cpu.prof")
+		if err != nil {
+			b.Fatal(err)
 		}
+		err = pprof.StartCPUProfile(profFile)
+		if err != nil {
+			b.Fatal(err)
+		}
+		// }
 
 		b.ResetTimer()
 
 		go app.Run(false)
 
-		for {
-			// Wait until CPU passes the boot ROM (PC > 0xFF).
-			if gb.CPU.Registers.PC > 0xFF {
-				gb.Stop()
-				break
-			}
-		}
+		// for {
+		// 	// Wait until CPU passes the boot ROM (PC > 0xFF).
+		// 	if gb.CPU.Registers.PC > 0xFF {
+		// 		gb.Stop()
+		// 		break
+		// 	}
+		// }
+
+		// Wait for 5 seconds.
+		time.Sleep(5 * time.Second)
+		gb.Stop()
 
 		// Temporarily restore stdout.
 		os.Stdout = stdout
 		b.Logf("Boot ROM completed. Cycles processed: %d", gb.TotalCycles())
 		os.Stdout = null
 
-		if b.N == 0 {
-			// Stop CPU profiling.
-			pprof.StopCPUProfile()
-			profFile.Close()
-		}
+		// if b.N == 0 {
+		// Stop CPU profiling.
+		pprof.StopCPUProfile()
+		profFile.Close()
+		// }
 
 	}
 

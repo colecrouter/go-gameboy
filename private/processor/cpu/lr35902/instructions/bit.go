@@ -1,4 +1,9 @@
-package lr35902
+package instructions
+
+import (
+	"github.com/colecrouter/gameboy-go/private/processor/cpu"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
+)
 
 /*
 RLA
@@ -17,7 +22,7 @@ RLCA
 */
 
 // Rotates/Shifts
-func (c *LR35902) rotate(r *uint8, left, useCarryBit, updateZ bool) {
+func rotate(c cpu.CPU, r *uint8, left, useCarryBit, updateZ bool) {
 	// Extract the bit that will be rotated out.
 	// For left rotate, that is the MSB; for right rotate, the LSB.
 	var carriedOut uint8
@@ -32,7 +37,7 @@ func (c *LR35902) rotate(r *uint8, left, useCarryBit, updateZ bool) {
 	// otherwise, use the bit that got shifted out.
 	var carryIn uint8
 	if useCarryBit {
-		if c.Flags.Carry {
+		if c.Flags().Carry {
 			carryIn = 1
 		} else {
 			carryIn = 0
@@ -48,28 +53,28 @@ func (c *LR35902) rotate(r *uint8, left, useCarryBit, updateZ bool) {
 		*r = (*r >> 1) | (carryIn << 7)
 	}
 
-	// Set the new Carry flag based on the bit that was rotated out.
-	var newCarryFlag = Reset
+	// flags.Set the new Carry flag based on the bit that was rotated out.
+	var newCarryFlag = flags.Reset
 	if carriedOut == 1 {
-		newCarryFlag = Set
+		newCarryFlag = flags.Set
 	}
 
 	// Update the Zero flag only if requested (CB rotates update Z).
-	var newZFlag FlagState
+	var newZFlag flags.FlagState
 	if updateZ {
 		if *r == 0 {
-			newZFlag = Set
+			newZFlag = flags.Set
 		} else {
-			newZFlag = Reset
+			newZFlag = flags.Reset
 		}
 	} else {
-		newZFlag = Reset // Always clear Z when !updateZ.
+		newZFlag = flags.Reset // Always clear Z when !updateZ.
 	}
 
 	// The N and H flags are reset on rotate instructions.
-	c.setFlags(newZFlag, Reset, Reset, newCarryFlag)
+	c.Flags().Set(newZFlag, flags.Reset, flags.Reset, newCarryFlag)
 }
-func (c *LR35902) shift(r *uint8, left, arithmeticRight bool) {
+func shift(c cpu.CPU, r *uint8, left, arithmeticRight bool) {
 	original := *r
 
 	// Determine what the new Carry flag should be.
@@ -91,78 +96,78 @@ func (c *LR35902) shift(r *uint8, left, arithmeticRight bool) {
 		}
 	}
 
-	// Set the Zero flag if the result is zero.
+	// flags.Set the Zero flag if the result is zero.
 	flagZero := (*r == 0)
 
 	// Now, convert boolean conditions into flag behaviors.
-	// For c.setFlags(zero, N, H, carry):
-	var zeroBehavior, nBehavior, hBehavior, carryBehavior FlagState
+	// For c.Flags().Set(zero, N, H, carry):
+	var zeroBehavior, nBehavior, hBehavior, carryBehavior flags.FlagState
 
 	if flagZero {
-		zeroBehavior = Set
+		zeroBehavior = flags.Set
 	} else {
-		zeroBehavior = Reset
+		zeroBehavior = flags.Reset
 	}
 
 	// The N and H flags are always cleared after these shifts.
-	nBehavior = Reset
-	hBehavior = Reset
+	nBehavior = flags.Reset
+	hBehavior = flags.Reset
 
 	if newCarry {
-		carryBehavior = Set
+		carryBehavior = flags.Set
 	} else {
-		carryBehavior = Reset
+		carryBehavior = flags.Reset
 	}
 
 	// Update the flags.
-	c.setFlags(zeroBehavior, nBehavior, hBehavior, carryBehavior)
+	c.Flags().Set(zeroBehavior, nBehavior, hBehavior, carryBehavior)
 }
-func (c *LR35902) swap(r *uint8) {
+func swap(c cpu.CPU, r *uint8) {
 	// Swap the upper and lower nibbles
 	*r = (*r&0xf)<<4 | *r>>4
 
-	zero := Reset
+	zero := flags.Reset
 	if *r == 0 {
-		zero = Set
+		zero = flags.Set
 	}
 
-	c.setFlags(zero, Reset, Reset, Reset)
+	c.Flags().Set(zero, flags.Reset, flags.Reset, flags.Reset)
 }
 
 // Comparing
-func (c *LR35902) cp8(r1 uint8, r2 uint8) {
-	zero := Reset
-	carry := Reset
-	hc := Reset
+func cp8(c cpu.CPU, r1 uint8, r2 uint8) {
+	zero := flags.Reset
+	carry := flags.Reset
+	hc := flags.Reset
 
 	if r1 < r2 {
-		carry = Set
+		carry = flags.Set
 	}
 
 	if r1&0xf < r2&0xf {
-		hc = Set
+		hc = flags.Set
 	}
 
 	if r1 == r2 {
-		zero = Set
+		zero = flags.Set
 	}
 
-	c.setFlags(zero, Set, hc, carry)
+	c.Flags().Set(zero, flags.Set, hc, carry)
 }
-func (c *LR35902) bit(b uint8, r uint8) {
-	zero := Reset
+func bit(c cpu.CPU, b uint8, r uint8) {
+	zero := flags.Reset
 
 	if r&(1<<b) == 0 {
-		zero = Set
+		zero = flags.Set
 	}
 
-	c.setFlags(zero, Reset, Set, Leave)
+	c.Flags().Set(zero, flags.Reset, flags.Set, flags.Leave)
 }
 
 // Bit manipulation
-func (c *LR35902) res(b uint8, r *uint8) {
+func res(c cpu.CPU, b uint8, r *uint8) {
 	*r &= ^(1 << b)
 }
-func (c *LR35902) set(b uint8, r *uint8) {
+func set(c cpu.CPU, b uint8, r *uint8) {
 	*r |= 1 << b
 }

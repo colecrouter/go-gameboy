@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/system"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,8 +14,8 @@ import (
 // New helper: setupWithOpcode initializes CPU and writes opcodes + extra bytes.
 func setupWithOpcode(codes ...uint8) (*memory.Bus, *LR35902) {
 	bus := &memory.Bus{}
-	ie := &registers.Interrupt{}
-	io := registers.NewRegisters(nil, bus, ie)
+	ie := &io.Interrupt{}
+	io := io.NewRegisters(nil, bus, ie)
 	bus.AddDevice(0x0000, 0xFFFF, &memory.Memory{Buffer: make([]byte, 0x10000)})
 	broadcaster := system.NewBroadcaster()
 
@@ -106,7 +106,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: INC/DEC BC", func(t *testing.T) {
 			{
 				_, cpu := setupWithOpcode(0x03)
-				cpu.Registers.B, cpu.Registers.C = fromRegisterPair(0x01)
+				cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(0x01)
 				cpu.MClock()
 				assert.Equal(t, uint16(2), toRegisterPair(cpu.Registers.B, cpu.Registers.C), "BC should increment by 1")
 			}
@@ -121,7 +121,7 @@ func TestInstructions(t *testing.T) {
 			for _, tt := range decBCTests {
 				t.Run(fmt.Sprintf("DEC_BC_%s", tt.name), func(t *testing.T) {
 					_, cpu := setupWithOpcode(0x0B)
-					cpu.Registers.B, cpu.Registers.C = fromRegisterPair(tt.initBC)
+					cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(tt.initBC)
 					cpu.MClock()
 					res := toRegisterPair(cpu.Registers.B, cpu.Registers.C)
 					assert.Equal(t, tt.expResult, res, "DEC BC did not produce expected value")
@@ -130,17 +130,17 @@ func TestInstructions(t *testing.T) {
 		})
 		t.Run("Operation: ADD HL,BC", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x09)
-			cpu.Registers.H, cpu.Registers.L = fromRegisterPair(0x1)
-			cpu.Registers.B, cpu.Registers.C = fromRegisterPair(0x1)
+			cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(0x1)
+			cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(0x1)
 			cpu.MClock()
 			assert.Equal(t, uint16(0x2), toRegisterPair(cpu.Registers.H, cpu.Registers.L), "HL should add BC")
 			assert.False(t, cpu.Flags.Subtract, "N flag should be reset in addition")
 		})
 		t.Run("ADD HL,BC bits ordering", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0x09)
-			// Set HL = 0x1234 and BC = 0x4321.
-			cpu.Registers.H, cpu.Registers.L = fromRegisterPair(0x1234)
-			cpu.Registers.B, cpu.Registers.C = fromRegisterPair(0x4321)
+			// flags.Set HL = 0x1234 and BC = 0x4321.
+			cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(0x1234)
+			cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(0x4321)
 			cpu.MClock()
 			expectedHL := uint16(0x1234 + 0x4321) // should equal 0x5555
 			actualHL := toRegisterPair(cpu.Registers.H, cpu.Registers.L)
@@ -154,7 +154,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("Instruction: Address Operations", func(t *testing.T) {
 			t.Run("LD_A_from_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0x02)
-				cpu.Registers.B, cpu.Registers.C = fromRegisterPair(0x01)
+				cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(0x01)
 				cpu.Registers.A = 0xAA
 				cpu.MClock()
 				assert.Equal(t, uint8(0xAA), bus.Read(0x0001), "Memory at address BC should be loaded with A")
@@ -290,7 +290,7 @@ func TestInstructions(t *testing.T) {
 			t.Run("Instruction: RLC_(HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x06)
 				hlAddr := uint16(0x2000)
-				cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+				cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 				// Write initial value: 0x85 (10000101)
 				bus.Write(hlAddr, 0x85)
 				cpu.MClock()
@@ -303,7 +303,7 @@ func TestInstructions(t *testing.T) {
 			t.Run("Instruction: RRC_(HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x0E)
 				hlAddr := uint16(0x2000)
-				cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+				cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 				// Write initial value: 0x01 (00000001)
 				bus.Write(hlAddr, 0x01)
 				cpu.MClock()
@@ -328,7 +328,7 @@ func TestInstructions(t *testing.T) {
 			t.Run("Instruction: SRL (HL)", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xCB, 0x3E) // CB prefix, SRL (HL) opcode
 				hlAddr := uint16(0x2000)
-				cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+				cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 				bus.Write(hlAddr, 0x03) // binary: 0000 0011; expected result: 0x01 with Carry true
 				cpu.MClock()            // process CB prefix
 				cpu.MClock()            // execute SRL (HL)
@@ -341,7 +341,7 @@ func TestInstructions(t *testing.T) {
 		})
 	})
 
-	t.Run("CB Bit, Res and Set", func(t *testing.T) {
+	t.Run("CB Bit, Res and flags.Set", func(t *testing.T) {
 		// BIT tests on register B
 		t.Run("BIT 0, B - bit set", func(t *testing.T) {
 			_, cpu := setupWithOpcode(0xCB, 0x40) // BIT 0, B
@@ -373,7 +373,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("BIT 3, (HL) - bit set", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0x5E) // BIT 3, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+			cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0x08) // 0x08 has bit3 set (0000 1000)
 			cpu.Flags.Carry = false
 			cpu.MClock()
@@ -397,7 +397,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("RES 1, (HL)", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0x8E) // RES 1, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+			cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0xFF) // all bits set
 			cpu.MClock()
 			cpu.MClock()
@@ -418,7 +418,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("SET 1, (HL)", func(t *testing.T) {
 			bus, cpu := setupWithOpcode(0xCB, 0xCE) // SET 1, (HL)
 			hlAddr := uint16(0x2000)
-			cpu.Registers.H, cpu.Registers.L = fromRegisterPair(hlAddr)
+			cpu.Registers.H, cpu.Registers.L = cpu.FromRegisterPair(hlAddr)
 			bus.Write(hlAddr, 0xF9) // 0xF9: 1111 1001, bit1 clear
 			cpu.MClock()
 			cpu.MClock()
@@ -515,7 +515,7 @@ func TestInstructions(t *testing.T) {
 		t.Run("Operation: PUSH/POP", func(t *testing.T) {
 			t.Run("PUSH_BC", func(t *testing.T) {
 				bus, cpu := setupWithOpcode(0xC5)
-				cpu.Registers.B, cpu.Registers.C = fromRegisterPair(0x1234)
+				cpu.Registers.B, cpu.Registers.C = cpu.FromRegisterPair(0x1234)
 				cpu.Registers.SP = 0xFFFE
 				cpu.MClock()
 				assert.Equal(t, uint16(0xFFFC), cpu.Registers.SP, "SP should decrease by 2 after PUSH")
@@ -697,7 +697,7 @@ func TestInstructions(t *testing.T) {
 		})
 
 		t.Run("Instruction: EI delay", func(t *testing.T) {
-			// Set up CPU with EI (0xFB) followed by a NOP (0x00)
+			// flags.Set up CPU with EI (0xFB) followed by a NOP (0x00)
 			_, cpu := setupWithOpcode(0xFB, 0x00)
 			// Ensure initial IME is false.
 			cpu.ime = false
@@ -728,7 +728,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("Conditional Helpers", func(t *testing.T) {
-		// Setup a dummy CPU for direct helper calls.
+		// flags.Setup a dummy CPU for direct helper calls.
 		_, cpu := setupWithOpcode(0x00) // opcode is irrelevant here
 		initPC := cpu.Registers.PC
 		spBefore := cpu.Registers.SP

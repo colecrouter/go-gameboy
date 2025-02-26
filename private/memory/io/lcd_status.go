@@ -1,4 +1,4 @@
-package registers
+package io
 
 // PPU modes
 type PPUState uint8

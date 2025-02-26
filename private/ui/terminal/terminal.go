@@ -16,7 +16,7 @@ import (
 	"github.com/colecrouter/gameboy-go/private/display/debug/tiles"
 	"github.com/colecrouter/gameboy-go/private/display/monochrome"
 	"github.com/colecrouter/gameboy-go/private/display/monochrome/lcd"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/ui/logger"
 	"github.com/colecrouter/gameboy-go/private/ui/terminal/utils"
 	"golang.org/x/term"
@@ -140,25 +140,25 @@ Loop:
 
 			// Process controller bindings.
 			joy := a.gb.Controller()
-			var butt registers.Button
+			var butt io.Button
 
 			switch key {
 			case "\x1b[A":
-				butt = registers.Button_Up
+				butt = io.Button_Up
 			case "\x1b[B":
-				butt = registers.Button_Down
+				butt = io.Button_Down
 			case "\x1b[C":
-				butt = registers.Button_Right
+				butt = io.Button_Right
 			case "\x1b[D":
-				butt = registers.Button_Left
+				butt = io.Button_Left
 			case "+":
-				butt = registers.Button_A
+				butt = io.Button_A
 			case "-":
-				butt = registers.Button_B
+				butt = io.Button_B
 			case "*":
-				butt = registers.Button_Start
+				butt = io.Button_Start
 			case "/":
-				butt = registers.Button_Select
+				butt = io.Button_Select
 			default:
 				continue
 			}

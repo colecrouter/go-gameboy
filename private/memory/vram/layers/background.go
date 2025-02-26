@@ -4,7 +4,7 @@ import (
 	"image"
 
 	"github.com/colecrouter/gameboy-go/private/display/monochrome"
-	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/memory/vram"
 	"github.com/colecrouter/gameboy-go/private/memory/vram/drawables/tile"
 )
@@ -12,12 +12,12 @@ import (
 // BGLayer represents the background layer.
 type BGLayer struct {
 	vram        *vram.VRAM
-	registers   *registers.Registers
+	registers   *io.Registers
 	visibleSize image.Rectangle
 }
 
 // NewBGLayer creates a new BGLayer.
-func NewBGLayer(v *vram.VRAM, regs *registers.Registers, bounds image.Rectangle) *BGLayer {
+func NewBGLayer(v *vram.VRAM, regs *io.Registers, bounds image.Rectangle) *BGLayer {
 	return &BGLayer{
 		vram:        v,
 		registers:   regs,

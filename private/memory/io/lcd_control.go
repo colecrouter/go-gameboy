@@ -1,4 +1,4 @@
-package registers
+package io
 
 // 0xFF40 - LCDC - LCD Control (R/W)
 

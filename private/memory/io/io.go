@@ -1,4 +1,4 @@
-package registers
+package io
 
 type InterruptFlags struct {
 	VBlank bool
