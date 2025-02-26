@@ -41,19 +41,14 @@ func ret(c cpu.CPU, condition bool) {
 }
 
 func call(c cpu.CPU, addr uint16, condition bool) {
-	// // Use the instruction's starting PC (c.lastPC) to compute return address
-	// if !condition {
-	// 	c.Registers().PC += 3
-	// 	return
-	// }
-
-	// // True branch: push return address = c.lastPC+3
-	// retAddr := c.lastPC + 3
-	// c.Registers().SP -= 2
-	// c.Write16(c.Registers().SP, retAddr)
-
-	// c.Registers().PC = addr - 1 // Adjust for MClock increment.
-	panic("Not implemented")
+	if !condition {
+		c.Registers().PC += 3
+		return
+	}
+	retAddr := c.Registers().PC + 3
+	c.Registers().SP -= 2
+	c.Write16(c.Registers().SP, retAddr)
+	c.Registers().PC = addr - 1
 }
 
 func rst(c cpu.CPU, addr uint16) {

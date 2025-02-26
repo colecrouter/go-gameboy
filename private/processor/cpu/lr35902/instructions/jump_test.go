@@ -133,5 +133,50 @@ func TestRst(t *testing.T) {
 	}
 }
 
+func TestCall(t *testing.T) {
+	// Test call when condition is true.
+	t.Run("Call when condition true", func(t *testing.T) {
+		cpu := newMockCPU()
+		// Setup initial PC and SP.
+		cpu.Registers().PC = 0x0100
+		cpu.Registers().SP = 0xFFF0
+
+		// Use call to branch to 0x1234 when condition true.
+		call(cpu, 0x1234, true)
+
+		// Expected return address is initial PC + 3.
+		expectedRetAddr := uint16(0x0100 + 3)
+		// PC should be set to target - 1.
+		expectedPC := uint16(0x1234 - 1)
+		// SP should be decreased by 2.
+		expectedSP := uint16(0xFFF0 - 2)
+
+		assert.Equal(t, expectedPC, cpu.Registers().PC, "unexpected PC value")
+		assert.Equal(t, expectedSP, cpu.Registers().SP, "unexpected SP value")
+
+		// Check that the return address was pushed correctly.
+		pushedLow := cpu.Memory[cpu.Registers().SP]
+		pushedHigh := cpu.Memory[cpu.Registers().SP+1]
+		returnAddr := (uint16(pushedHigh) << 8) | uint16(pushedLow)
+		assert.Equal(t, expectedRetAddr, returnAddr, "incorrect return address pushed to stack")
+	})
+
+	// Test call when condition is false.
+	t.Run("Call when condition false", func(t *testing.T) {
+		cpu := newMockCPU()
+		// Setup initial PC and SP.
+		cpu.Registers().PC = 0x0100
+		cpu.Registers().SP = 0xFFF0
+
+		// Call with false condition should skip 3 bytes.
+		call(cpu, 0x1234, false)
+		expectedPC := uint16(0x0100 + 3)
+
+		assert.Equal(t, expectedPC, cpu.Registers().PC, "unexpected PC value")
+		// SP should remain unchanged.
+		assert.Equal(t, uint16(0xFFF0), cpu.Registers().SP, "SP should remain unchanged")
+	})
+}
+
 // Note: The call function is marked as unimplemented with panic in the source code
 // so we'll skip testing it until it's implemented
