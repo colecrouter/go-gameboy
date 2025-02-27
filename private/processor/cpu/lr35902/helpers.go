@@ -69,7 +69,7 @@ func (c *LR35902) Halt() {
 
 // Stop halts the CPU until a button is pressed
 func (c *LR35902) Stop() {
-	c.Stop()
+	panic("not implemented")
 }
 
 // EI enables interrupts

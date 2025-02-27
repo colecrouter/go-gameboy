@@ -120,10 +120,9 @@ func generateCbInstructions() [0x100]Instruction {
 						OP: func(c cpu.CPU) {
 							addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 							val := c.Read(addr)
-							c.Clock()
+							// c.Clock()
 							gen(&val)(c)
 							c.Write(addr, val)
-							c.Clock()
 						},
 					}
 				} else {

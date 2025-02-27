@@ -71,7 +71,8 @@ func (c *LR35902) MClock() {
 	}
 
 	// Fetch the next instruction
-	opcode = c.Read(c.registers.PC)
+	// We don't clock here, because the fetch stage overlaps with the previous instruction's execute stage
+	opcode = c.bus.Read(c.registers.PC)
 
 	if c.cb {
 		instruction = instructions.CBInstructions[opcode]
@@ -90,8 +91,6 @@ func (c *LR35902) MClock() {
 
 	// Execute instruction
 	op(c)
-
-	// We don't clock here, because the fetch stage overlaps with the previous instruction's execute stage
 
 	// Update DI and EI delay
 	if c.eiDelay > 0 {
