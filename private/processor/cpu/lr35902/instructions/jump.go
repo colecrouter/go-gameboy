@@ -6,29 +6,27 @@ import (
 
 // Jump
 func jump(c cpu.CPU, addr uint16, condition bool) {
-	if condition {
-		c.Registers().PC = addr - 1
+	if !condition {
 		return
 	}
 
-	c.Registers().PC += 3 // 3-byte instruction
+	c.Registers().PC = addr - 1
 }
+
+// JumpRelative now adds 2 to account for the two-byte instruction length.
 func jumpRelative(c cpu.CPU, offset int8, condition bool) {
-	if condition {
-		c.Registers().PC = uint16(int32(c.Registers().PC)+2+int32(offset)) - 1
+	if !condition {
 		return
 	}
 
-	// Updated: For a 2-byte jumpRelative, false branch adds 1 (MClock will add 1 later)
-	c.Registers().PC += 1
+	// Add 2 for instruction length, then offset, then subtract 1 because MClock will increment PC.
+	c.Registers().PC = uint16(int32(c.Registers().PC)+2+int32(offset)) - 1
 }
 
 // Subroutines
 func ret(c cpu.CPU, condition bool) {
 	if !condition {
 		c.Clock()
-		// Reverse the PC increment caused by Clock() so that PC remains unchanged.
-		c.Registers().PC--
 		return
 	}
 
@@ -42,12 +40,12 @@ func ret(c cpu.CPU, condition bool) {
 
 func call(c cpu.CPU, addr uint16, condition bool) {
 	if !condition {
-		c.Registers().PC += 3
 		return
 	}
 	retAddr := c.Registers().PC + 3
 	c.Registers().SP -= 2
 	c.Write16(c.Registers().SP, retAddr)
+	// Update: subtract 1 to account for the later PC increment.
 	c.Registers().PC = addr - 1
 }
 

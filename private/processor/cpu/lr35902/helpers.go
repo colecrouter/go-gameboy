@@ -28,14 +28,12 @@ func (c *LR35902) GetImmediate16() uint16 {
 
 func (c *LR35902) Read(addr uint16) byte {
 	val := c.bus.Read(addr)
-	c.registers.PC++
 	<-c.clock
 	return val
 }
 
 func (c *LR35902) Read16(addr uint16) (high, low uint8) {
 	high, low = c.bus.Read16(addr)
-	c.registers.PC += 2
 	<-c.clock
 	<-c.clock
 	return high, low
@@ -44,22 +42,24 @@ func (c *LR35902) Read16(addr uint16) (high, low uint8) {
 // Write writes a byte to the given address
 func (c *LR35902) Write(addr uint16, val byte) {
 	c.bus.Write(addr, val)
-	c.registers.PC++
 	<-c.clock
 }
 
 // Write16 writes a 16-bit value to the given address
 func (c *LR35902) Write16(addr uint16, val uint16) {
 	c.bus.Write16(addr, val)
-	c.registers.PC += 2
 	<-c.clock
 	<-c.clock
 }
 
-// Clock increments the program counter and waits for the next clock cycle
+// Clock waits for the next clock cycle
 func (c *LR35902) Clock() {
-	c.registers.PC++
 	<-c.clock
+}
+
+// IncrementPC increments the program counter
+func (c *LR35902) IncrementPC() {
+	c.registers.PC++
 }
 
 // Halt halts the CPU until an interrupt is received

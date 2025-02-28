@@ -47,9 +47,13 @@ func (m *MockCPU) Flags() *flags.Flags {
 	return &m.flgs
 }
 
-// Clock simulates waiting for a clock cycle and increments the PC.
+// Clock simulates waiting for a clock cycle.
 func (m *MockCPU) Clock() {
 	m.ClockCalled = true
+}
+
+// IncrementPC increments the program counter.
+func (m *MockCPU) IncrementPC() {
 	m.regs.PC++
 }
 

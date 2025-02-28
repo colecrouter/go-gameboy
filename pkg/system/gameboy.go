@@ -141,6 +141,9 @@ func (gb *GameBoy) Start(skip bool) {
 		// CGB only
 
 		gb.IO.Write(0xFF, 0x00) // Interrupt Enable Register
+
+		// Disable boot ROM
+		gb.IO.DisableBootROM = true
 	}
 
 	go gb.CPU.Run(gb.done)

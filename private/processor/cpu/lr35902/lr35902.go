@@ -1,6 +1,8 @@
 package lr35902
 
 import (
+	"fmt"
+
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu"
@@ -98,6 +100,10 @@ func (c *LR35902) MClock() {
 		if c.eiDelay == 0 {
 			c.ime = true
 		}
+	}
+
+	if mnemonic == "RL C" {
+		fmt.Printf("")
 	}
 
 	c.registers.PC++

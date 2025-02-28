@@ -15,6 +15,7 @@ type CPU interface {
 	Read16(uint16) (uint8, uint8)
 	Write16(uint16, uint16)
 	Clock()
+	IncrementPC()
 	Halt()
 	Stop()
 	EI()

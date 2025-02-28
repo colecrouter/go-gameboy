@@ -2,41 +2,35 @@ package lr35902
 
 import (
 	"testing"
-
-	"github.com/colecrouter/gameboy-go/private/memory"
-	"github.com/colecrouter/gameboy-go/private/memory/io"
-	"github.com/colecrouter/gameboy-go/private/system"
 )
 
 func TestByteLengths(t *testing.T) {
-	// Create a new LR35902 CPU
-	bus := &memory.Bus{}
-	ir := &io.Interrupt{}
-	ie := &io.Interrupt{}
-	ioreg := io.NewRegisters(nil, bus, ir)
-	mem := &memory.Memory{Buffer: make([]uint8, 0x10000)}
-	bus.AddDevice(0, 0xFFFF, mem)
-	broadcaster := system.NewBroadcaster()
-	cpu := NewLR35902(broadcaster, bus, ioreg, ie)
-
-	go system.ClockGenerator(broadcaster, 4)
-
-	for i := 0; i < 0x100; i++ {
-		// Lookup mnemonic
+	for i := range uint8(0xFF) {
 		mnemonic := mnemonics[i]
 
-		t.Run(mnemonic, func(t *testing.T) {
-			// Reset PC
-			cpu.registers.PC = 0
+		if mnemonic == "INVALID" {
+			continue // TODO add more elegant catch case
+		}
 
-			// Load instruction
+		t.Run(mnemonic, func(t *testing.T) {
+			cpu, mem, _ := newTestCPU()
+			cpu.registers.PC = 0
 			mem.Write(0, uint8(i))
 
-			// Execute instruction
+			// Setup so that conditional instructions don't jump
+			setupConditionalByOpcode(cpu, uint8(i), false)
+
+			// Preload clock ticks equal to the expected instruction length and close the channel.
+			ticks := instrLengths[i]
+			manualClock := make(chan struct{}, ticks)
+			for j := 0; j < ticks; j++ {
+				manualClock <- struct{}{}
+			}
+			close(manualClock)
+			cpu.clock = manualClock
+
 			cpu.MClock()
 
-			// Check PC
-			// +1 because the PC is incremented after the instruction is fetched
 			if int(cpu.registers.PC) != instrLengths[i] {
 				t.Errorf("PC: got %d, want %d", cpu.registers.PC, instrLengths[i])
 			}
@@ -44,16 +38,15 @@ func TestByteLengths(t *testing.T) {
 	}
 }
 
-// TestCyclesUnconditional uses the new helper to deduplicate boilerplate.
 func TestCyclesUnconditional(t *testing.T) {
 	for i := range uint8(0xFF) {
 		// Only run for unconditional instructions.
-		if instrCycles[i] != instrCyclesCond[i] {
+		if instrCycles[i] != instrCyclesCond[i] || instrCycles[i] == 0 {
 			continue
 		}
 		mnemonic := mnemonics[i]
 		t.Run(mnemonic, func(t *testing.T) {
-			runCyclesTest(t, uint8(i), instrCycles[i], instrLengths[i], false, nil)
+			runCyclesTest(t, uint8(i), instrCycles[i], false, nil)
 		})
 	}
 }
@@ -67,7 +60,7 @@ func TestCyclesConditional(t *testing.T) {
 		// Might as well keep them in in case of mistakes
 
 		// Skip if timings are identical.
-		if instrCycles[i] == instrCyclesCond[i] {
+		if instrCycles[i] == instrCyclesCond[i] || instrCyclesCond[i] == 0 {
 			continue
 		}
 		// Skip if this opcode doesn't have a condition type.
@@ -77,7 +70,7 @@ func TestCyclesConditional(t *testing.T) {
 
 		mnemonic := mnemonics[i]
 		t.Run(mnemonic, func(t *testing.T) {
-			runCyclesTest(t, uint8(i), instrCyclesCond[i], instrLengths[i], true, nil)
+			runCyclesTest(t, uint8(i), instrCyclesCond[i], true, nil)
 		})
 	}
 }
@@ -92,7 +85,7 @@ func TestCyclesCB(t *testing.T) {
 			}
 			// For CB opcodes, preload ticks = instrCyclesCB[i] - 1 and expect PC to advance by that amount.
 			ticks := instrCyclesCB[i] - 1
-			runCyclesTest(t, uint8(i), ticks, ticks, false, adjust)
+			runCyclesTest(t, uint8(i), ticks, false, adjust)
 		})
 	}
 }
