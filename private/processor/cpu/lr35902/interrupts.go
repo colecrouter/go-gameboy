@@ -30,7 +30,7 @@ func (c *LR35902) isr(isr ISR) {
 	c.Write16(c.registers.SP, c.registers.PC)
 
 	// Jump to ISR
-	c.registers.PC = isrAddresses[isr]
+	c.registers.PC = isrAddresses[isr] - 1
 
 	// Disable interrupts
 	c.ime = false

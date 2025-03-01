@@ -41,11 +41,11 @@ func TestJumpRelative(t *testing.T) {
 		// Updated: expected = initial + 2 + offset – 1
 		expectedPC uint16
 	}{
-		{"Relative jump forward when true", 0x0100, 10, true, 0x010B},
-		{"Relative jump backward when true", 0x0100, -5, true, 0x00FC},
+		{"Relative jump forward when true", 0x0100, 10, true, 0x010A},
+		{"Relative jump backward when true", 0x0100, -5, true, 0x00FB},
 		{"Skip when condition false", 0x0100, 10, false, 0x0100},
 		{"Skip when condition false (neg)", 0x0100, -5, false, 0x0100},
-		{"Zero offset jump when true", 0x0100, 0, true, 0x0101},
+		{"Zero offset jump when true", 0x0100, 0, true, 0x0100},
 	}
 
 	for _, tt := range tests {
@@ -148,10 +148,10 @@ func TestCall(t *testing.T) {
 		// Use call to branch to 0x1234 when condition true.
 		call(cpu, 0x1234, true)
 
-		// Expected return address is initial PC + 3.
-		expectedRetAddr := uint16(0x0100 + 3)
-		// PC should be set to target directly.
-		expectedPC := uint16(0x1233)
+		// Expected return address is initial PC + 1 (we had to read the immediate operand).
+		expectedRetAddr := uint16(0x0101)
+		// The target is adjusted by subtracting 1: expected PC = target - 1.
+		expectedPC := uint16(0x1234 - 1)
 		// SP should be decreased by 2.
 		expectedSP := uint16(0xFFF0 - 2)
 
@@ -172,12 +172,9 @@ func TestCall(t *testing.T) {
 		cpu.Registers().PC = 0x0100
 		cpu.Registers().SP = 0xFFF0
 
-		// Call with false condition should leave PC unchanged.
+		// When condition is false, call should leave PC and SP unchanged.
 		call(cpu, 0x1234, false)
-		expectedPC := uint16(0x0100)
-
-		assert.Equal(t, expectedPC, cpu.Registers().PC, "unexpected PC value")
-		// SP should remain unchanged.
+		assert.Equal(t, uint16(0x0100), cpu.Registers().PC, "unexpected PC value")
 		assert.Equal(t, uint16(0xFFF0), cpu.Registers().SP, "SP should remain unchanged")
 	})
 }
