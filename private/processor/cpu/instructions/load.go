@@ -20,26 +20,15 @@ func loadHLSPOffset(c cpu.CPU, offset int8) {
 	// Sign-extend offset correctly.
 	result := sp + uint16(int16(offset))
 
+	// Compute flags using the raw byte value.
+	unsignedOffset := uint16(uint8(offset))
 	var hc, carry = flags.Reset, flags.Reset
 
-	if offset >= 0 {
-		// For positive offset, use unsigned addition on lower nibbles and bytes.
-		if (sp&0xF)+(uint16(offset)&0xF) > 0xF {
-			hc = flags.Set
-		}
-		if (sp&0xFF)+(uint16(offset)&0xFF) > 0xFF {
-			carry = flags.Set
-		}
-	} else {
-		// For negative offset, convert using proper sign extension.
-		pos := uint16(-int16(offset))
-		// A borrow occurs if (SP & 0xF) is less than (pos & 0xF).
-		if (sp & 0xF) < (pos & 0xF) {
-			hc = flags.Set
-		}
-		if (sp & 0xFF) < (pos & 0xFF) {
-			carry = flags.Set
-		}
+	if ((sp & 0xF) + (unsignedOffset & 0xF)) > 0xF {
+		hc = flags.Set
+	}
+	if ((sp & 0xFF) + (unsignedOffset & 0xFF)) > 0xFF {
+		carry = flags.Set
 	}
 
 	// Store result in HL and update flags: Z and N reset.

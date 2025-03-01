@@ -54,43 +54,6 @@ func TestLoad16(t *testing.T) {
 	}
 }
 
-func TestLoadHLSPOffset(t *testing.T) {
-	tests := []struct {
-		name       string
-		initialSP  uint16
-		offset     int8
-		expectedHL uint16
-		expectedZ  bool
-		expectedN  bool
-		expectedH  bool
-		expectedC  bool
-	}{
-		{"Positive offset", 0x1000, 5, 0x1005, false, false, false, false},
-		{"Half carry", 0x0FFF, 1, 0x1000, false, false, true, true},
-		{"Carry", 0xFFFF, 1, 0x0000, false, false, true, true},
-		// a borrow occurs from both the lower nibble and lower byte,
-		// so both HalfCarry and Carry should be set.
-		{"Negative offset", 0x1000, -5, 0x0FFB, false, false, true, true},
-		{"Zero offset", 0x0500, 0, 0x0500, false, false, false, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cpu := newMockCPU()
-			cpu.Registers().SP = tt.initialSP
-
-			loadHLSPOffset(cpu, tt.offset)
-
-			actualHL := (uint16(cpu.Registers().H) << 8) | uint16(cpu.Registers().L)
-			assert.Equal(t, tt.expectedHL, actualHL, "unexpected HL value")
-			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
-			assert.Equal(t, tt.expectedN, cpu.Flags().Subtract, "unexpected Subtract flag")
-			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected HalfCarry flag")
-			assert.Equal(t, tt.expectedC, cpu.Flags().Carry, "unexpected Carry flag")
-		})
-	}
-}
-
 func TestPop16(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -207,6 +170,87 @@ func TestPopAF(t *testing.T) {
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected HalfCarry flag")
 			assert.Equal(t, tt.expectedC, cpu.Flags().Carry, "unexpected Carry flag")
 			assert.Equal(t, initialSP+2, cpu.Registers().SP, "SP should be incremented by 2")
+		})
+	}
+}
+
+func TestLoadHLSPOffset(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialSP     uint16
+		offset        int8
+		expectedHL    uint16
+		expectedZero  bool // always false per spec
+		expectedSub   bool // always false
+		expectedHalf  bool
+		expectedCarry bool
+	}{
+		{
+			name:          "Positive offset, no carry",
+			initialSP:     0x1000,
+			offset:        5,
+			expectedHL:    0x1005,
+			expectedZero:  false,
+			expectedSub:   false,
+			expectedHalf:  false,
+			expectedCarry: false,
+		},
+		{
+			name:         "Lower nibble overflow sets half-carry",
+			initialSP:    0x0FFF,
+			offset:       1,
+			expectedHL:   0x1000,
+			expectedZero: false,
+			expectedSub:  false,
+			// 0xF+0x1=0x10 → half-carry and carry set.
+			expectedHalf:  true,
+			expectedCarry: true,
+		},
+		{
+			name:          "Carry from lower byte addition",
+			initialSP:     0xFFFF,
+			offset:        1,
+			expectedHL:    0x0000,
+			expectedZero:  false,
+			expectedSub:   false,
+			expectedHalf:  true,
+			expectedCarry: true,
+		},
+		{
+			name:          "Negative offset causes borrow",
+			initialSP:     0x1000,
+			offset:        -5,
+			expectedHL:    0x0FFB,
+			expectedZero:  false,
+			expectedSub:   false,
+			expectedHalf:  true,
+			expectedCarry: true,
+		},
+		{
+			name:          "Zero offset: no flags",
+			initialSP:     0x0500,
+			offset:        0,
+			expectedHL:    0x0500,
+			expectedZero:  false,
+			expectedSub:   false,
+			expectedHalf:  false,
+			expectedCarry: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cpu := newMockCPU()
+			cpu.Registers().SP = tt.initialSP
+
+			loadHLSPOffset(cpu, tt.offset)
+
+			actualHL := (uint16(cpu.Registers().H) << 8) | uint16(cpu.Registers().L)
+			assert.Equal(t, tt.expectedHL, actualHL, "unexpected HL value")
+			assert.Equal(t, tt.expectedZero, cpu.Flags().Zero, "unexpected Zero flag")
+			assert.Equal(t, tt.expectedSub, cpu.Flags().Subtract, "unexpected Subtract flag")
+			assert.Equal(t, tt.expectedHalf, cpu.Flags().HalfCarry, "unexpected HalfCarry flag")
+			assert.Equal(t, tt.expectedCarry, cpu.Flags().Carry, "unexpected Carry flag")
 		})
 	}
 }

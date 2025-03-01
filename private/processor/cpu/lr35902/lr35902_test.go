@@ -5,11 +5,35 @@ import (
 )
 
 func TestByteLengths(t *testing.T) {
+	// For instructions we can't test, add them to the blacklist.
+	blacklist := map[uint8]bool{
+		0x18: true, // JR r8
+		0xC3: true, // JP a16
+		0xC7: true, // RST 00H
+		0xC9: true, // RET
+		0xCF: true, // RST 08H
+		0xCD: true, // CALL a16
+		0xD7: true, // RST 10H
+		0xD9: true, // RETI
+		0xDF: true, // RST 18H
+		0xE7: true, // RST 20H
+		0xE9: true, // JP (HL)
+		0xEF: true, // RST 28H
+		0xF7: true, // RST 30H
+	}
+
+	// Add invalid ops to blacklist.
+	for i, l := range instrLengths {
+		if l == 0 {
+			blacklist[uint8(i)] = true
+		}
+	}
+
 	for i := range uint8(0xFF) {
 		mnemonic := mnemonics[i]
 
-		if mnemonic == "INVALID" {
-			continue // TODO add more elegant catch case
+		if blacklist[i] {
+			continue
 		}
 
 		t.Run(mnemonic, func(t *testing.T) {
@@ -33,6 +57,8 @@ func TestByteLengths(t *testing.T) {
 
 			if int(cpu.registers.PC) != instrLengths[i] {
 				t.Errorf("PC: got %d, want %d", cpu.registers.PC, instrLengths[i])
+			} else {
+				t.Logf("PC: got %d", cpu.registers.PC)
 			}
 		})
 	}

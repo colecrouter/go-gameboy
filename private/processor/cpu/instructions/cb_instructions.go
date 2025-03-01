@@ -115,56 +115,43 @@ func generateCbInstructions() [0x100]Instruction {
 				// First half: use y as the op code selector.
 				gen := firstHalfCbInstructionsHelper[y]
 				if x == 6 {
-					CBInstructions[opcode] = Instruction{
-						P: 1,
-						OP: func(c cpu.CPU) {
-							addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
-							val := c.Read(addr)
-							gen(&val)(c)
+					CBInstructions[opcode] = func(c cpu.CPU) {
+						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+						val := c.Read(addr)
+						gen(&val)(c)
 
-							// If the instruction is BIT, don't write back to memory.
-							if opcode>>6 != 0x1 {
-								c.Write(addr, val)
-							}
+						// If the instruction is BIT, don't write back to memory.
+						if opcode>>6 != 0x1 {
+							c.Write(addr, val)
+						}
 
-						},
 					}
 				} else {
-					CBInstructions[opcode] = Instruction{
-						P: 1,
-						OP: func(c cpu.CPU) {
-							regs := regMapping(c)
-							target := regs[x]
-							gen(target)(c)
-						},
+					CBInstructions[opcode] = func(c cpu.CPU) {
+						regs := regMapping(c)
+						target := regs[x]
+						gen(target)(c)
 					}
 				}
 			} else {
 				// Second half: use y as the op code selector.
 				gen := secondHalfCbInstructionsHelper[y]
 				if x == 14 {
-					CBInstructions[opcode] = Instruction{
-						P: 1,
-						OP: func(c cpu.CPU) {
-							addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
-							val := c.Read(addr)
-							gen(&val)(c)
+					CBInstructions[opcode] = func(c cpu.CPU) {
+						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+						val := c.Read(addr)
+						gen(&val)(c)
 
-							// If the instruction is BIT, don't write back to memory.
-							if opcode>>6 != 0x1 {
-								c.Write(addr, val)
-							}
-
-						},
+						// If the instruction is BIT, don't write back to memory.
+						if opcode>>6 != 0x1 {
+							c.Write(addr, val)
+						}
 					}
 				} else {
-					CBInstructions[opcode] = Instruction{
-						P: 1,
-						OP: func(c cpu.CPU) {
-							regs := regMapping(c)
-							target := regs[x-8]
-							gen(target)(c)
-						},
+					CBInstructions[opcode] = func(c cpu.CPU) {
+						regs := regMapping(c)
+						target := regs[x-8]
+						gen(target)(c)
 					}
 				}
 			}

@@ -37,7 +37,7 @@ func (j *JoyPad) Read(addr uint16) uint8 {
 		panic("Invalid address")
 	}
 
-	var val uint8 = 0b11111111 // Set bits 4 and 5, all buttons released
+	var val uint8 = 0b00111111 // Set bits 4 and 5, all buttons released
 
 	// Correct upper nibble
 

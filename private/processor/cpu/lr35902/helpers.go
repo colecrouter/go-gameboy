@@ -19,9 +19,10 @@ func (c *LR35902) GetImmediate8() uint8 {
 func (c *LR35902) GetImmediate16() uint16 {
 	high, low := c.bus.Read16(c.registers.PC + 1)
 
-	<-c.clock           // Use an additional m-cycle to read the immediate value
-	<-c.clock           // Use an additional m-cycle to read the immediate value
-	c.registers.PC += 2 // Increment the program counter to the next instruction
+	<-c.clock
+	<-c.clock
+	c.registers.PC++
+	c.registers.PC++
 
 	return cpu.ToRegisterPair(high, low)
 }
@@ -29,6 +30,7 @@ func (c *LR35902) GetImmediate16() uint16 {
 func (c *LR35902) Read(addr uint16) byte {
 	val := c.bus.Read(addr)
 	<-c.clock
+
 	return val
 }
 
@@ -36,6 +38,7 @@ func (c *LR35902) Read16(addr uint16) (high, low uint8) {
 	high, low = c.bus.Read16(addr)
 	<-c.clock
 	<-c.clock
+
 	return high, low
 }
 
@@ -81,6 +84,11 @@ func (c *LR35902) EI() {
 // EIWithDelay enables interrupts after a delay
 func (c *LR35902) EIWithDelay() {
 	c.eiDelay = 2
+}
+
+// DI disables interrupts
+func (c *LR35902) DI() {
+	c.ime = false
 }
 
 // PrefixCB sets the CPU to use the CB instruction set

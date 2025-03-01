@@ -32,6 +32,7 @@ func RunBlarggTestRom(t *testing.T, romPath string) {
 	for range ticker.C {
 		output := string(testDevice.output)
 		if strings.Contains(output, "Failed") {
+			t.Log(output)
 			t.Fatal("Test failed")
 		} else if strings.Contains(output, "Passed") {
 			t.Log("Test passed")

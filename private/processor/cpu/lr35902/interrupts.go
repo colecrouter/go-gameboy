@@ -25,12 +25,21 @@ func (c *LR35902) isr(isr ISR) {
 		}
 	}
 
+	// Two additional m-cycles
+	<-c.clock
+	<-c.clock
+
 	// Push PC onto stack
+	// This consumes an additional 2 m-cycles
 	c.registers.SP -= 2
 	c.Write16(c.registers.SP, c.registers.PC)
 
 	// Jump to ISR
+	// PC won't be incremented, so don't -1
 	c.registers.PC = isrAddresses[isr]
+
+	// One last m-cycle for the write(?)
+	<-c.clock
 
 	// Disable interrupts
 	c.ime = false

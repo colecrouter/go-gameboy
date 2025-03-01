@@ -113,6 +113,11 @@ func (m *MockCPU) EIWithDelay() {
 	m.EIDelayed = true
 }
 
+// DI disables interrupts.
+func (m *MockCPU) DI() {
+	m.IME = false
+}
+
 // PrefixCB sets the CB prefix mode.
 func (m *MockCPU) PrefixCB() {
 	m.CBPrefix = true

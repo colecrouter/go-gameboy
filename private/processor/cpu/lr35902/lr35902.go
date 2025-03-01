@@ -7,7 +7,8 @@ import (
 	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
-	"github.com/colecrouter/gameboy-go/private/processor/cpu/lr35902/instructions"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/logging"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/registers"
 	"github.com/colecrouter/gameboy-go/private/system"
 )
@@ -26,6 +27,8 @@ type LR35902 struct {
 	lastPC      uint16
 	halted      bool
 	clock       <-chan struct{}
+
+	logger logging.Logger
 }
 
 // step executes the next instruction in the CPU's memory.
@@ -87,9 +90,13 @@ func (c *LR35902) MClock() {
 
 	_ = mnemonic
 
-	op = instruction.OP
+	op = instruction
 
 	c.lastPC = c.registers.PC
+
+	if c.registers.PC == 0x29e2 {
+		fmt.Printf("")
+	}
 
 	// Execute instruction
 	op(c)
@@ -100,10 +107,6 @@ func (c *LR35902) MClock() {
 		if c.eiDelay == 0 {
 			c.ime = true
 		}
-	}
-
-	if mnemonic == "RL C" {
-		fmt.Printf("")
 	}
 
 	c.registers.PC++
@@ -136,4 +139,18 @@ func (c *LR35902) Run(close <-chan struct{}) {
 			c.MClock()
 		}
 	}
+}
+
+func (c *LR35902) printStack() []uint16 {
+	var stack [63]uint16
+	var j int
+	for j = range len(stack) {
+		offset := uint32(c.registers.SP) + uint32(j*2)
+		if offset > 0xFFFE {
+			break
+		}
+		stack[j] = cpu.ToRegisterPair(c.bus.Read16(uint16(offset)))
+	}
+
+	return stack[0:j]
 }

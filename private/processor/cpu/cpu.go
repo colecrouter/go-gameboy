@@ -20,6 +20,7 @@ type CPU interface {
 	Stop()
 	EI()
 	EIWithDelay()
+	DI()
 	PrefixCB()
 }
 

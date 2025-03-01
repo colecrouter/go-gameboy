@@ -151,13 +151,13 @@ Loop:
 				butt = io.Button_Right
 			case "\x1b[D":
 				butt = io.Button_Left
-			case "+":
+			case "z":
 				butt = io.Button_A
-			case "-":
+			case "x":
 				butt = io.Button_B
-			case "*":
+			case "a":
 				butt = io.Button_Start
-			case "/":
+			case "s":
 				butt = io.Button_Select
 			default:
 				continue

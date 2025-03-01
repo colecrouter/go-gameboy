@@ -12,8 +12,9 @@ type Timer struct {
 	initialized    bool
 
 	// Synchronization state.
-	prevBit  bool
-	overflow bool
+	prevBit       bool
+	overflow      bool
+	pendingReload bool
 
 	clock <-chan struct{}
 }
@@ -67,34 +68,26 @@ func (t *Timer) Write(addr uint16, value uint8) {
 }
 
 func (t *Timer) MClock() {
-	if !t.initialized {
-		panic("Timer not initialized")
-	}
-
-	// Check for TIMA overflow.
-	// There's a 1 cycle delay between TIMA overflow and resetting it to TMA.
-	// So, we'll check for overflow first, then increment TIMA.
-	// This has the bonus of overwriting any written value to TIMA, which is how the hardware works.
-	if t.overflow {
+	// If a reload is pending, do it and then immediately return.
+	if t.pendingReload {
 		t.Counter = t.Modulo
 		t.interruptFlags.Timer = true
-		t.overflow = false
+		t.pendingReload = false
+		return
 	}
 
 	// Always increment DIV
 	t.Divider++
 
-	// Check if timer is enabled.
 	if !t.Control.Enabled {
 		return
 	}
 
-	// Check for falling edge on selected bit.
-	old := t.Counter
-	offset := uint16(0)
+	// Determine the bit offset (using updated offsets when counting per M-cycle)
+	var offset uint16
 	switch t.Control.Speed {
 	case M256:
-		offset = 9
+		offset = 7
 	case M4:
 		offset = 1
 	case M16:
@@ -102,15 +95,19 @@ func (t *Timer) MClock() {
 	case M64:
 		offset = 5
 	}
+
+	// Falling edge detection
+	old := t.Counter
 	bit := (t.Divider >> offset) & 1
 	if t.prevBit && bit == 0 {
 		t.Counter++
 	}
 	t.prevBit = bit != 0
 
-	// Check for TIMA overflow.
+	// Check for overflow: if TIMA wraps from 0xFF to 0
 	if t.Counter == 0 && old == 0xFF {
-		t.overflow = true
+		// Mark that an overflow occurred. Do not apply TMA yet.
+		t.pendingReload = true
 	}
 }
 
@@ -123,7 +120,7 @@ func (t *Timer) Run(close <-chan struct{}) {
 		select {
 		case <-close:
 			return
-		default:
+		case <-t.clock:
 			t.MClock()
 		}
 	}
