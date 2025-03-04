@@ -348,6 +348,6 @@ func (c *LR35902) PrintRegisters() {
 	fmt.Printf("\r\nRegisters:\r\n")
 	fmt.Printf("A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X\r\n", c.Registers.a, c.Registers.b, c.Registers.c, c.Registers.d, c.Registers.e)
 	fmt.Printf("H: 0x%02X  L: 0x%02X\r\n", c.Registers.h, c.Registers.l)
-	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.Registers.sp, c.Registers.PC)
+	fmt.Printf("SP: 0x%04X  PC: 0x%04X\r\n", c.Registers.SP, c.Registers.PC)
 	fmt.Printf("Flags: Z=%t  N=%t  H=%t  C=%t\r\n", c.flags.Zero, c.flags.Subtract, c.flags.HalfCarry, c.flags.Carry)
 }

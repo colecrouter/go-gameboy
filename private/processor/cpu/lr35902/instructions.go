@@ -41,7 +41,7 @@ var instructions = [0x100]instruction{
 	// LD (a16),SP
 	0x08: {c: 20, p: 3, op: func(c *LR35902) {
 		address := c.getImmediate16()
-		bytes := uint(c.Registers.sp)
+		bytes := uint(c.Registers.SP)
 		c.bus.Write(address, uint8(bytes&0xFF))
 		c.bus.Write(address+1, uint8(bytes>>8))
 	}},
@@ -216,7 +216,7 @@ var instructions = [0x100]instruction{
 	}},
 	// LD SP,d16
 	0x31: {c: 12, p: 3, op: func(c *LR35902) {
-		c.Registers.sp = c.getImmediate16()
+		c.Registers.SP = c.getImmediate16()
 	}},
 	// LD (HL-),A
 	0x32: {c: 8, p: 1, op: func(c *LR35902) {
@@ -226,7 +226,7 @@ var instructions = [0x100]instruction{
 	}},
 	// INC SP
 	0x33: {c: 8, p: 1, op: func(c *LR35902) {
-		c.Registers.sp++
+		c.Registers.SP++
 	}},
 	// INC (HL)
 	0x34: {c: 12, p: 1, op: func(c *LR35902) {
@@ -258,7 +258,7 @@ var instructions = [0x100]instruction{
 	}},
 	// ADD HL,SP
 	0x39: {c: 8, p: 1, op: func(c *LR35902) {
-		high, low := fromRegisterPair(c.Registers.sp)
+		high, low := fromRegisterPair(c.Registers.SP)
 		c.add16(&c.Registers.h, &c.Registers.l, high, low)
 	}},
 	// LD A,(HL-)
@@ -269,7 +269,7 @@ var instructions = [0x100]instruction{
 	}},
 	// DEC SP
 	0x3B: {c: 8, p: 1, op: func(c *LR35902) {
-		c.Registers.sp--
+		c.Registers.SP--
 	}},
 	// INC A
 	0x3C: {c: 4, p: 1, op: func(c *LR35902) {
@@ -1046,7 +1046,7 @@ var instructions = [0x100]instruction{
 	}},
 	// LD SP,HL
 	0xF9: {c: 8, p: 1, op: func(c *LR35902) {
-		c.Registers.sp = toRegisterPair(c.Registers.h, c.Registers.l)
+		c.Registers.SP = toRegisterPair(c.Registers.h, c.Registers.l)
 	}},
 	// LD A,(a16)
 	0xFA: {c: 16, p: 3, op: func(c *LR35902) {

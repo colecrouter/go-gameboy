@@ -5,6 +5,7 @@ import (
 
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/registers"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/logging"
 )
 
 // LR35902 is the original GameBoy CPU
@@ -12,7 +13,7 @@ type LR35902 struct {
 	initialized bool
 	Registers   struct {
 		a, b, c, d, e, h, l uint8
-		sp, PC              uint16
+		SP, PC              uint16
 	}
 	flags   Flags
 	bus     *memory.Bus
@@ -23,6 +24,7 @@ type LR35902 struct {
 	eiDelay int
 	lastPC  uint16
 	halted  bool
+	logger  logging.Logger
 }
 
 // Step executes the next instruction in the CPU's memory.
@@ -76,15 +78,20 @@ func (c *LR35902) Step() int {
 		mnemonic = mnemonics[opcode]
 	}
 
-	if c.Registers.PC == 0x29a6 {
-		fmt.Printf("")
+	increment := instruction.p
+
+	// Log instruction
+	c.logger.Log(c.Registers.PC, c.Registers.SP, mnemonic)
+
+	if c.Registers.PC == 0x039f {
+		c.logger.Flush()
+		panic("Reached breakpoint")
 	}
 
 	_ = mnemonic
 
 	op := instruction.op
 	cycles := instruction.c
-	increment := instruction.p
 
 	c.lastPC = c.Registers.PC
 	if op == nil {
