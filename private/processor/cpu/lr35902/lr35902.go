@@ -117,7 +117,7 @@ func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *i
 	cpu := &LR35902{initialized: true}
 
 	if broadcaster != nil {
-		cpu.clock = broadcaster.SubscribeM()
+		cpu.clock = broadcaster.Subscribe(system.MRisingEdge)
 	}
 	cpu.bus = bus
 	cpu.io = ioRegisters

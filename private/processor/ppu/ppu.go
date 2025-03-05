@@ -44,7 +44,7 @@ func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, r
 		oam:       oam,
 		registers: registers,
 		image:     image.NewPaletted(image.Rect(0, 0, visibleColumns, visibleLines), monochrome.Palette),
-		clock:     broadcaster.SubscribeT(),
+		clock:     broadcaster.Subscribe(system.TRisingEdge),
 	}
 }
 

@@ -2,6 +2,7 @@ package io
 
 import "github.com/colecrouter/gameboy-go/private/system"
 
+// Added new fields for overflow management.
 type Timer struct {
 	Divider uint16       // FF04 - DIV
 	Counter uint8        // FF05 - TIMA
@@ -11,12 +12,13 @@ type Timer struct {
 	interruptFlags *Interrupt
 	initialized    bool
 
-	// Synchronization state.
-	prevBit       bool
-	overflow      bool
-	pendingReload bool
+	// Two clock channels from the broadcaster:
+	clockRising  <-chan struct{}
+	clockFalling <-chan struct{}
 
-	clock <-chan struct{}
+	// State for overflow management.
+	pendingOverflow   bool
+	enableWriteCancel bool
 }
 
 func (t *Timer) Read(addr uint16) uint8 {
@@ -48,80 +50,86 @@ func (t *Timer) Write(addr uint16, value uint8) {
 		// DIV is reset to 0 when written to.
 		t.Divider = 0
 	case 0x1:
-		// If an overflow is pending, ignore the write so that the reload occurs.
-		if t.overflow {
-			return
-		}
+		// // Writing to TIMA.
+		// // If a pending overflow is active, only cancel it if the cancellation window is open.
+		// if t.pendingOverflow {
+		// 	if t.enableWriteCancel {
+		// 		// In cycle A: allow cancellation and update TIMA normally.
+		// 		t.pendingOverflow = false
+		// 	} else {
+		// 		// In cycle B: ignore the write so that the reload from TMA occurs.
+		// 		return
+		// 	}
+		// }
 		t.Counter = value
 	case 0x2:
 		t.Modulo = value
 	case 0x3:
-		// If TAC speed is changed, reset the falling edge detection.
-		if t.Control.Speed != Increment(value&0x3) {
-			t.prevBit = false
-		}
-
 		t.Control.Write(0, value)
 	default:
 		panic("Invalid address")
 	}
 }
 
-func (t *Timer) MClock() {
-	// If a reload is pending, do it and then immediately return.
-	if t.pendingReload {
+// MRisingEdge should be called on the m-cycle rising edge.
+// It closes the cancellation window and reloads TIMA if overflow is still pending.
+func (t *Timer) MRisingEdge() {
+	// Close cancellation window.
+	t.enableWriteCancel = false
+	if t.pendingOverflow {
 		t.Counter = t.Modulo
 		t.interruptFlags.Timer = true
-		t.pendingReload = false
-		return
+		t.pendingOverflow = false
 	}
+}
 
-	// Always increment DIV
+// MFallingEdge should be called on the m-cycle falling edge.
+// It increments the divider and updates TIMA, potentially triggering an overflow.
+func (t *Timer) MFallingEdge() {
+	oldDiv := t.Divider
 	t.Divider++
 
+	// If the timer is disabled, nothing more to do.
 	if !t.Control.Enabled {
 		return
 	}
 
-	// Determine the bit offset (using updated offsets when counting per M-cycle)
-	var offset uint16
+	var freq uint16
 	switch t.Control.Speed {
 	case M256:
-		offset = 7
+		freq = 256
 	case M4:
-		offset = 1
+		freq = 4
 	case M16:
-		offset = 3
+		freq = 16
 	case M64:
-		offset = 5
+		freq = 64
 	}
 
-	// Falling edge detection
-	old := t.Counter
-	bit := (t.Divider >> offset) & 1
-	if t.prevBit && bit == 0 {
-		t.Counter++
-	}
-	t.prevBit = bit != 0
-
-	// Check for overflow: if TIMA wraps from 0xFF to 0
-	if t.Counter == 0 && old == 0xFF {
-		// Mark that an overflow occurred. Do not apply TMA yet.
-		t.pendingReload = true
+	increase := (t.Divider / freq) - (oldDiv / freq)
+	if increase > 0 {
+		newVal := uint16(t.Counter) + increase
+		if newVal > 0xFF {
+			// Overflow: set TIMA to 0 and open cancellation window.
+			t.Counter = 0
+			t.pendingOverflow = true
+			t.enableWriteCancel = true
+		} else {
+			t.Counter = uint8(newVal)
+		}
 	}
 }
 
+// Run listens for rising and falling edge ticks and calls the proper functions.
 func (t *Timer) Run(close <-chan struct{}) {
-	if !t.initialized {
-		panic("CPU not initialized")
-	}
-
 	for {
 		select {
 		case <-close:
 			return
-		case <-t.clock:
-			t.MClock()
+		case <-t.clockRising:
+			t.MRisingEdge()
+		case <-t.clockFalling:
+			t.MFallingEdge()
 		}
 	}
 }
@@ -131,7 +139,9 @@ func NewTimer(broadcaster *system.Broadcaster, interrupt *Interrupt) *Timer {
 	timer.interruptFlags = interrupt
 
 	if broadcaster != nil {
-		timer.clock = broadcaster.SubscribeM()
+		// Subscribe separately to the m-cycle rising and falling edges.
+		timer.clockRising = broadcaster.Subscribe(system.MRisingEdge)
+		timer.clockFalling = broadcaster.Subscribe(system.MFallingEdge)
 	}
 
 	return timer

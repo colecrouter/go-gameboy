@@ -34,22 +34,20 @@ type GameBoy struct {
 
 	done         chan struct{}
 	totalTCycles uint64
-	broadcaster  *system.Broadcaster
+	broadcaster  system.Broadcaster
 	FastMode     bool
 }
 
 func NewGameBoy() *GameBoy {
 	gb := &GameBoy{}
 
-	gb.broadcaster = system.NewBroadcaster()
-
 	gb.Bus = &memory.Bus{}
 	gb.VRAM = &vram.VRAM{}
 	gb.IF = &io.Interrupt{}
 	gb.IE = &io.Interrupt{}
-	gb.IO = io.NewRegisters(gb.broadcaster, gb.Bus, gb.IF)
+	gb.IO = io.NewRegisters(&gb.broadcaster, gb.Bus, gb.IF)
 	oamModule := memory.NewOAM(gb.VRAM, &gb.IO.LCDControl.Sprites8x16)
-	gb.CPU = lr35902.NewLR35902(gb.broadcaster, gb.Bus, gb.IO, gb.IE)
+	gb.CPU = lr35902.NewLR35902(&gb.broadcaster, gb.Bus, gb.IO, gb.IE)
 	gb.CartridgeReader = *reader.NewCartridgeReader(&gb.IO.DisableBootROM)
 
 	gb.done = make(chan struct{}) // initialize done channel
@@ -69,7 +67,7 @@ func NewGameBoy() *GameBoy {
 	gb.Bus.AddDevice(0xFF80, 0xFFFE, &memory.Memory{Buffer: make([]byte, 0x7F)}) // High RAM
 	gb.Bus.AddDevice(0xFFFF, 0xFFFF, gb.IE)                                      // Interrupt Enable Register
 
-	gb.PPU = ppu.NewPPU(gb.broadcaster, gb.VRAM, oamModule, gb.IO, gb.IF)
+	gb.PPU = ppu.NewPPU(&gb.broadcaster, gb.VRAM, oamModule, gb.IO, gb.IF)
 
 	return gb
 }
@@ -146,6 +144,7 @@ func (gb *GameBoy) Start(skip bool) {
 		gb.IO.DisableBootROM = true
 	}
 
+	// Start CPU, PPU, and Timer in their own goroutines.
 	go gb.CPU.Run(gb.done)
 	go gb.PPU.Run(gb.done)
 	go gb.IO.Timer.Run(gb.done)
@@ -158,24 +157,17 @@ func (gb *GameBoy) Start(skip bool) {
 			return
 		default:
 			for range TARGET_CYCLES_PER_FRAME {
-				for i := range 4 {
-					if i == 0 {
-						gb.broadcaster.BroadcastM()
-					}
-
-					gb.broadcaster.BroadcastT()
-				}
-				gb.totalTCycles += 4
+				gb.broadcaster.TClock()
+				gb.totalTCycles++
 			}
 		}
 
 		if !gb.FastMode {
-			// Calculate remaining time for the frame.
+			// Throttle to ~60 FPS.
 			remaining := FRAME_DURATION - time.Since(frameStart)
 			if remaining > 2*time.Millisecond {
 				time.Sleep(remaining - 1*time.Millisecond)
 			}
-			// Busy wait for the final part of the frame.
 			for time.Since(frameStart) < FRAME_DURATION {
 			}
 		}

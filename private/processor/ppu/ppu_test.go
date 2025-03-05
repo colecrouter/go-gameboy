@@ -24,7 +24,7 @@ func TestPPU(t *testing.T) {
 	// Set the palette to a simple 4-color palette
 	regs.TilePalette.Set([4]uint8{0, 1, 2, 3})
 
-	broadcaster := system.NewBroadcaster()
+	broadcaster := &system.Broadcaster{}
 
 	ppuUnit := NewPPU(broadcaster, vramModule, oamModule, regs, ie)
 
