@@ -30,7 +30,7 @@ func (b *Broadcaster) Subscribe(c ClockType) <-chan struct{} {
 	return ch
 }
 
-func (b *Broadcaster) Broadcast(c ClockType) {
+func (b *Broadcaster) broadcast(c ClockType) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -46,14 +46,14 @@ func (b *Broadcaster) Broadcast(c ClockType) {
 
 func (b *Broadcaster) TClock() {
 	if b.count%4 == 0 {
-		b.Broadcast(MRisingEdge)
-		b.Broadcast(TRisingEdge)
+		b.broadcast(MRisingEdge)
+		b.broadcast(TRisingEdge)
 
-		b.Broadcast(MFallingEdge)
-		b.Broadcast(TFallingEdge)
+		b.broadcast(MFallingEdge)
+		b.broadcast(TFallingEdge)
 	} else {
-		b.Broadcast(TRisingEdge)
-		b.Broadcast(TFallingEdge)
+		b.broadcast(TRisingEdge)
+		b.broadcast(TFallingEdge)
 	}
 
 	b.count++

@@ -94,7 +94,13 @@ func (c *LR35902) MClock() {
 
 	c.lastPC = c.registers.PC
 
-	if c.registers.PC == 0x29e2 {
+	if c.registers.PC == 0x29d0 {
+		if c.registers.A&0b1111 != 0b1111 {
+			fmt.Printf("")
+		}
+	}
+
+	if c.registers.PC == 0x03a0 {
 		fmt.Printf("")
 	}
 
