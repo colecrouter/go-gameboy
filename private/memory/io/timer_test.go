@@ -171,3 +171,20 @@ func TestTimerIntervals(t *testing.T) {
 		}
 	}
 }
+
+// TestIncreaseTIMAAtDividerMultiple verifies that TIMA should increase
+// when DIV reaches a multiple of the period (M4 mode simulates TAC 0x5).
+func TestIncreaseTIMAAtDividerMultiple(t *testing.T) {
+	intr := &Interrupt{}
+	timer := NewTimer(nil, intr)
+	timer.Control.Enabled = true
+	// Simulate loading 0x5 into TAC: enabled (bit 2 set) with speed bits = 0x1 (M4)
+	timer.Control.Speed = M4
+	timer.Divider = 39 // so that after MFallingEdge, Divider becomes 40 (40 % 4 == 0)
+	timer.Counter = 10
+	timer.MRisingEdge()
+	timer.MFallingEdge()
+	if timer.Counter != 11 {
+		t.Errorf("expected counter to increase to 11, got %d", timer.Counter)
+	}
+}
