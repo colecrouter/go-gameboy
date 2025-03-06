@@ -21,8 +21,10 @@ func inc8(c cpu.CPU, r *uint8) {
 	c.Flags().Set(zero, flags.Reset, hc, flags.Leave)
 }
 func inc16(c cpu.CPU, high, low *uint8) {
+	c.Clock()
 	combined := cpu.ToRegisterPair(*high, *low)
 	combined++
+	c.Ack()
 	*high, *low = cpu.FromRegisterPair(combined)
 }
 func dec8(c cpu.CPU, r *uint8) {
@@ -40,7 +42,9 @@ func dec8(c cpu.CPU, r *uint8) {
 	c.Flags().Set(zero, flags.Set, hc, flags.Leave)
 }
 func dec16(c cpu.CPU, high, low *uint8) {
+	c.Clock()
 	combined := cpu.ToRegisterPair(*high, *low)
 	combined--
+	c.Ack()
 	*high, *low = cpu.FromRegisterPair(combined)
 }

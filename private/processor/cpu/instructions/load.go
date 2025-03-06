@@ -12,11 +12,15 @@ func load8(c cpu.CPU, r *uint8, val uint8) {
 
 func load16(c cpu.CPU, high, low *uint8, val uint16) {
 	*high, *low = cpu.FromRegisterPair(val)
+
 	// Flags not affected for plain 16-bit loads.
 }
 
 func loadHLSPOffset(c cpu.CPU, offset int8) {
 	sp := c.Registers().SP
+
+	c.Clock()
+
 	// Sign-extend offset correctly.
 	result := sp + uint16(int16(offset))
 
@@ -32,31 +36,50 @@ func loadHLSPOffset(c cpu.CPU, offset int8) {
 	}
 
 	// Store result in HL and update flags: Z and N reset.
-	c.Registers().H, c.Registers().L = cpu.FromRegisterPair(result)
 	c.Flags().Set(flags.Reset, flags.Reset, hc, carry)
+
+	c.Ack()
+
+	c.Registers().H, c.Registers().L = cpu.FromRegisterPair(result)
 }
 
 func pop16(c cpu.CPU, high, low *uint8) {
-	*high, *low = c.Read16(c.Registers().SP)
-	c.Registers().SP += 2
+	c.Clock()
+	*low = c.Read(c.Registers().SP)
+	c.Registers().SP++
+	c.Ack()
+
+	c.Clock()
+	*high = c.Read(c.Registers().SP)
+	c.Registers().SP++
+	c.Ack()
 }
 func push16(c cpu.CPU, high, low uint8) {
-	c.Registers().SP -= 2
-	c.Write16(c.Registers().SP, cpu.ToRegisterPair(high, low))
+	c.Clock()
+	c.Registers().SP--
+	c.Ack()
+
+	c.Clock()
+	c.Write(c.Registers().SP, high)
+	c.Registers().SP--
+	c.Ack()
+
+	c.Clock()
+	c.Write(c.Registers().SP, low)
+	c.Ack()
 }
 func load8Mem(c cpu.CPU, r uint8, addr uint16) {
 	// For LDH (n), A
+	c.Clock()
 	c.Write(addr, r)
+	c.Ack()
 }
 
 // popAF pops register AF from the stack and updates A and flag fields.
 func popAF(c cpu.CPU) {
-	high, low := c.Read16(c.Registers().SP)
-	c.Registers().SP += 2
-	c.Registers().A = high
+	flags := c.Flags().Read()
+	pop16(c, &c.Registers().A, &flags)
+
 	// Update flags: bit7: Z, bit6: N, bit5: H, bit4: C (lower 4 bits ignored)
-	c.Flags().Zero = (low & 0x80) != 0
-	c.Flags().Subtract = (low & 0x40) != 0
-	c.Flags().HalfCarry = (low & 0x20) != 0
-	c.Flags().Carry = (low & 0x10) != 0
+	c.Flags().Write(flags)
 }

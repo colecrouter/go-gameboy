@@ -1,6 +1,9 @@
 package lr35902
 
-import "github.com/colecrouter/gameboy-go/private/memory/io"
+import (
+	"github.com/colecrouter/gameboy-go/private/memory/io"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu"
+)
 
 func (c *LR35902) isr(isr ISR) {
 	// STAT interrupt is special
@@ -26,20 +29,29 @@ func (c *LR35902) isr(isr ISR) {
 	}
 
 	// Two additional m-cycles
-	<-c.clock
-	<-c.clock
+	c.ClockAndAck()
+	c.ClockAndAck()
 
 	// Push PC onto stack
 	// This consumes an additional 2 m-cycles
-	c.registers.SP -= 2
-	c.Write16(c.registers.SP, c.registers.PC)
+
+	highPC, lowPC := cpu.FromRegisterPair(c.registers.PC)
+	c.Clock()
+	c.Registers().SP--
+	c.Write(c.registers.SP, highPC)
+	c.Ack()
+
+	c.Clock()
+	c.Registers().SP--
+	c.Write(c.registers.SP, lowPC)
+	c.Ack()
 
 	// Jump to ISR
 	// PC won't be incremented, so don't -1
 	c.registers.PC = isrAddresses[isr]
 
 	// One last m-cycle for the write(?)
-	<-c.clock
+	c.ClockAndAck()
 
 	// Disable interrupts
 	c.ime = false

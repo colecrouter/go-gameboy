@@ -41,7 +41,13 @@ func add16(c cpu.CPU, highDest, lowDest *uint8, highVal, lowVal uint8) {
 		hc = flags.Set
 	}
 
-	*highDest, *lowDest = cpu.FromRegisterPair(sum)
+	h, l := cpu.FromRegisterPair(sum)
+
+	c.Clock()
+	*lowDest = l
+	c.Ack()
+
+	*highDest = h
 
 	c.Flags().Set(flags.Leave, flags.Reset, hc, carry)
 }
@@ -84,7 +90,8 @@ func and8(c cpu.CPU, r *uint8, val uint8) {
 }
 func addSPr8(c cpu.CPU) {
 	operand := int8(c.GetImmediate8())
-	result := c.Registers().SP + uint16(int16(operand))
+
+	c.Clock()
 
 	// Compute half-carry and carry flags using only the lower nibble/byte.
 	hc := flags.Reset
@@ -95,10 +102,15 @@ func addSPr8(c cpu.CPU) {
 	if (c.Registers().SP&0xFF)+uint16(uint8(operand)) > 0xFF {
 		carry = flags.Set
 	}
+	c.Flags().Set(flags.Reset, flags.Reset, hc, carry)
+	c.Ack()
+
+	c.Clock()
+	result := c.Registers().SP + uint16(int16(operand))
+	c.Ack()
 
 	// Write result to SP (wraps naturally to 16 bits) and update flags, Z and N are reset.
 	c.Registers().SP = result
-	c.Flags().Set(flags.Reset, flags.Reset, hc, carry)
 }
 func or8(c cpu.CPU, r *uint8, val uint8) {
 	*r |= val

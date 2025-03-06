@@ -52,9 +52,9 @@ func (m *MockCPU) Clock() {
 	m.ClockCalled = true
 }
 
-// IncrementPC increments the program counter.
-func (m *MockCPU) IncrementPC() {
-	m.regs.PC++
+// Ack acknowledges a clock cycle.
+func (m *MockCPU) Ack() {
+	m.ClockCalled = false
 }
 
 // Read returns the byte stored in memory at the given address.

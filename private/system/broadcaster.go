@@ -14,47 +14,77 @@ const (
 	TFallingEdge
 )
 
-// Broadcaster handles subscription and broadcasting of both m-cycles and t-cycles.
 type Broadcaster struct {
-	mu    sync.Mutex
-	subs  [4][]chan struct{}
-	count int64
+	mu      sync.Mutex
+	subs    [4][]chan struct{}
+	ackSubs [4][]chan struct{}
+	count   int64
 }
 
-// Subscribe adds a new subscriber for the specified clock type and returns its channel.
-func (b *Broadcaster) Subscribe(c ClockType) <-chan struct{} {
+// Subscribe adds a new subscriber for the specified clock type.
+func (b *Broadcaster) Subscribe(c ClockType) (tick <-chan struct{}, ack chan<- struct{}) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	ch := make(chan struct{}, 1) // Buffered to prevent blocking
-	b.subs[c] = append(b.subs[c], ch)
-	return ch
+	ticker := make(chan struct{}, 1)
+	ackCh := make(chan struct{}, 1)
+	b.subs[c] = append(b.subs[c], ticker)
+	b.ackSubs[c] = append(b.ackSubs[c], ackCh)
+	return ticker, ackCh
 }
 
-func (b *Broadcaster) Broadcast(c ClockType) {
+func (b *Broadcaster) broadcastWithAck(c ClockType) {
 	b.mu.Lock()
-	defer b.mu.Unlock()
+	subs := b.subs[c]
+	ackSubs := b.ackSubs[c]
+	b.mu.Unlock()
 
-	for _, ch := range b.subs[c] {
+	var wg sync.WaitGroup
+	wg.Add(len(ackSubs))
+	// Send tick to subscribers.
+	for _, ch := range subs {
 		select {
 		case ch <- struct{}{}:
-			// Successfully sent cycle tick
 		default:
-			// Subscriber not ready; skip to prevent blocking
+			// Skip if not ready.
 		}
 	}
+
+	// Wait for all subscriber acknowledgements.
+	for _, ackCh := range ackSubs {
+		go func(ch chan struct{}) {
+			<-ch // Wait for ack from subscriber.
+			wg.Done()
+		}(ackCh)
+	}
+	wg.Wait()
 }
 
 func (b *Broadcaster) TClock() {
 	if b.count%4 == 0 {
-		b.Broadcast(MRisingEdge)
-		b.Broadcast(TRisingEdge)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			b.broadcastWithAck(MRisingEdge)
+			wg.Done()
+		}()
+		go func() {
+			b.broadcastWithAck(TRisingEdge)
+			wg.Done()
+		}()
+		wg.Wait()
 
-		b.Broadcast(MFallingEdge)
-		b.Broadcast(TFallingEdge)
+		wg.Add(2)
+		go func() {
+			b.broadcastWithAck(MFallingEdge)
+			wg.Done()
+		}()
+		go func() {
+			b.broadcastWithAck(TFallingEdge)
+			wg.Done()
+		}()
 	} else {
-		b.Broadcast(TRisingEdge)
-		b.Broadcast(TFallingEdge)
+		b.broadcastWithAck(TRisingEdge)
+		b.broadcastWithAck(TFallingEdge)
 	}
-
 	b.count++
 }

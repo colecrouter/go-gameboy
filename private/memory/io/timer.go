@@ -13,8 +13,10 @@ type Timer struct {
 	initialized    bool
 
 	// Two clock channels from the broadcaster:
-	clockRising  <-chan struct{}
-	clockFalling <-chan struct{}
+	clockRising     <-chan struct{}
+	clockFalling    <-chan struct{}
+	clockRisingAck  chan<- struct{}
+	clockFallingAck chan<- struct{}
 
 	// State for overflow management.
 	pendingOverflow   bool
@@ -128,8 +130,10 @@ func (t *Timer) Run(close <-chan struct{}) {
 			return
 		case <-t.clockRising:
 			t.MRisingEdge()
+			t.clockRisingAck <- struct{}{}
 		case <-t.clockFalling:
 			t.MFallingEdge()
+			t.clockFallingAck <- struct{}{}
 		}
 	}
 }
@@ -140,8 +144,8 @@ func NewTimer(broadcaster *system.Broadcaster, interrupt *Interrupt) *Timer {
 
 	if broadcaster != nil {
 		// Subscribe separately to the m-cycle rising and falling edges.
-		timer.clockRising = broadcaster.Subscribe(system.MRisingEdge)
-		timer.clockFalling = broadcaster.Subscribe(system.MFallingEdge)
+		timer.clockRising, timer.clockRisingAck = broadcaster.Subscribe(system.MRisingEdge)
+		timer.clockFalling, timer.clockFallingAck = broadcaster.Subscribe(system.MFallingEdge)
 	}
 
 	return timer

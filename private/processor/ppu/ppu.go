@@ -19,6 +19,7 @@ type PPU struct {
 	lineCycleCounter uint16
 	image            *image.Paletted
 	clock            <-chan struct{}
+	clockAck         chan<- struct{}
 }
 
 const (
@@ -38,14 +39,17 @@ const (
 )
 
 func NewPPU(broadcaster *system.Broadcaster, vram *vram.VRAM, oam *memory.OAM, registers *io.Registers, ie *io.Interrupt) *PPU {
-	return &PPU{
+	p := &PPU{
 		interrupt: ie,
 		vram:      vram,
 		oam:       oam,
 		registers: registers,
 		image:     image.NewPaletted(image.Rect(0, 0, visibleColumns, visibleLines), monochrome.Palette),
-		clock:     broadcaster.Subscribe(system.TRisingEdge),
 	}
+
+	p.clock, p.clockAck = broadcaster.Subscribe(system.TRisingEdge)
+
+	return p
 }
 
 /*
@@ -88,8 +92,6 @@ func (p *PPU) TClock() {
 	if p.registers.LY == TotalLinesPerFrame {
 		p.registers.LY = 0
 	}
-
-	<-p.clock
 }
 
 // compositeImage overlays src onto dst; it assumes pixel value 0 is transparent.
@@ -141,7 +143,9 @@ func (p *PPU) Run(close <-chan struct{}) {
 		case <-close:
 			return
 		default:
+			<-p.clock
 			p.TClock()
+			p.clockAck <- struct{}{}
 		}
 	}
 }

@@ -28,12 +28,12 @@ func (b *Bus) Read(addr uint16) byte {
 	panic("No device found for address")
 }
 
-func (b *Bus) Read16(addr uint16) (high, low uint8) {
-	low = b.Read(addr)
-	high = b.Read(addr + 1)
+// func (b *Bus) Read16(addr uint16) (high, low uint8) {
+// 	low = b.Read(addr)
+// 	high = b.Read(addr + 1)
 
-	return high, low
-}
+// 	return high, low
+// }
 
 func (b *Bus) Write(addr uint16, data byte) {
 	for _, mapping := range b.mapping {
@@ -47,14 +47,14 @@ func (b *Bus) Write(addr uint16, data byte) {
 	}
 }
 
-func (b *Bus) Write16(addr uint16, data uint16) {
-	// Extract low and high bytes
-	low := uint8(data & 0xFF)
-	high := uint8((data >> 8) & 0xFF)
+// func (b *Bus) Write16(addr uint16, data uint16) {
+// 	// Extract low and high bytes
+// 	low := uint8(data & 0xFF)
+// 	high := uint8((data >> 8) & 0xFF)
 
-	b.Write(addr, low)
-	b.Write(addr+1, high)
-}
+// 	b.Write(addr, low)
+// 	b.Write(addr+1, high)
+// }
 
 // Print prints the contents of the memory bus within the specified address range.
 func Print(d Device, start, end uint16) {

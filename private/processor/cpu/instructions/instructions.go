@@ -14,7 +14,9 @@ var Instructions = [0x100]Instruction{
 	0x01: func(c cpu.CPU) { load16(c, &c.Registers().B, &c.Registers().C, c.GetImmediate16()) },
 	// LD (BC),A
 	0x02: func(c cpu.CPU) {
+		c.Clock()
 		address := cpu.ToRegisterPair(c.Registers().B, c.Registers().C)
+		c.Ack()
 		c.Write(address, c.Registers().A)
 	},
 	// INC BC
@@ -30,15 +32,23 @@ var Instructions = [0x100]Instruction{
 	// LD (a16),SP
 	0x08: func(c cpu.CPU) {
 		address := c.GetImmediate16()
+		c.Clock()
 		bytes := uint(c.Registers().SP)
+		c.Ack()
+
+		c.Clock()
 		c.Write(address, uint8(bytes&0xFF))
+		c.Ack()
+
 		c.Write(address+1, uint8(bytes>>8))
 	},
 	// ADD HL,BC
 	0x09: func(c cpu.CPU) { add16(c, &c.Registers().H, &c.Registers().L, c.Registers().B, c.Registers().C) },
 	// LD A,(BC)
 	0x0A: func(c cpu.CPU) {
-		address := uint16(c.Registers().B)<<8 | uint16(c.Registers().C)
+		c.Clock()
+		address := cpu.ToRegisterPair(c.Registers().B, c.Registers().C)
+		c.Ack()
 		c.Registers().A = c.Read(address)
 	},
 	// DEC BC
@@ -57,7 +67,9 @@ var Instructions = [0x100]Instruction{
 	0x11: func(c cpu.CPU) { load16(c, &c.Registers().D, &c.Registers().E, c.GetImmediate16()) },
 	// LD (DE),A
 	0x12: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().D, c.Registers().E)
+		c.Ack()
 		c.Write(addr, c.Registers().A)
 	},
 	// INC DE
@@ -76,7 +88,9 @@ var Instructions = [0x100]Instruction{
 	0x19: func(c cpu.CPU) { add16(c, &c.Registers().H, &c.Registers().L, c.Registers().D, c.Registers().E) },
 	// LD A,(DE)
 	0x1A: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().D, c.Registers().E)
+		c.Ack()
 		c.Registers().A = c.Read(addr)
 	},
 	// DEC DE
@@ -144,25 +158,42 @@ var Instructions = [0x100]Instruction{
 		dec16(c, &c.Registers().H, &c.Registers().L)
 	},
 	// INC SP
-	0x33: func(c cpu.CPU) { c.Registers().SP++ },
+	0x33: func(c cpu.CPU) {
+		c.Clock()
+		c.Registers().SP++
+		c.Ack()
+	},
 	// INC (HL)
 	0x34: func(c cpu.CPU) {
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+
+		c.Clock()
 		val := c.Read(addr)
+		c.Ack()
+
+		c.Clock()
 		inc8(c, &val)
+		c.Ack()
+
 		c.Write(addr, val)
 	},
 	// DEC (HL)
 	0x35: func(c cpu.CPU) {
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Clock()
 		val := c.Read(addr)
+		c.Ack()
+		c.Clock()
 		dec8(c, &val)
+		c.Ack()
 		c.Write(addr, val)
 	},
 	// LD (HL),d8
 	0x36: func(c cpu.CPU) {
 		val := c.GetImmediate8()
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, val)
 	},
 	// SCF
@@ -181,7 +212,11 @@ var Instructions = [0x100]Instruction{
 		dec16(c, &c.Registers().H, &c.Registers().L)
 	},
 	// DEC SP
-	0x3B: func(c cpu.CPU) { c.Registers().SP-- },
+	0x3B: func(c cpu.CPU) {
+		c.Clock()
+		c.Registers().SP--
+		c.Ack()
+	},
 	// INC A
 	0x3C: func(c cpu.CPU) { inc8(c, &c.Registers().A) },
 	// DEC A
@@ -210,7 +245,9 @@ var Instructions = [0x100]Instruction{
 	0x45: func(c cpu.CPU) { load8(c, &c.Registers().B, c.Registers().L) },
 	// LD B,(HL)
 	0x46: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().B = c.Read(addr)
 	},
 	// LD B,A
@@ -229,7 +266,9 @@ var Instructions = [0x100]Instruction{
 	0x4D: func(c cpu.CPU) { load8(c, &c.Registers().C, c.Registers().L) },
 	// LD C,(HL)
 	0x4E: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().C = c.Read(addr)
 	},
 	// LD C,A
@@ -248,7 +287,9 @@ var Instructions = [0x100]Instruction{
 	0x55: func(c cpu.CPU) { load8(c, &c.Registers().D, c.Registers().L) },
 	// LD D,(HL)
 	0x56: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().D = c.Read(addr)
 	},
 	// LD D,A
@@ -267,7 +308,9 @@ var Instructions = [0x100]Instruction{
 	0x5D: func(c cpu.CPU) { load8(c, &c.Registers().E, c.Registers().L) },
 	// LD E,(HL)
 	0x5E: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().E = c.Read(addr)
 	},
 	// LD E,A
@@ -286,7 +329,9 @@ var Instructions = [0x100]Instruction{
 	0x65: func(c cpu.CPU) { load8(c, &c.Registers().H, c.Registers().L) },
 	// LD H,(HL)
 	0x66: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().H = c.Read(addr)
 	},
 	// LD H,A
@@ -305,46 +350,62 @@ var Instructions = [0x100]Instruction{
 	0x6D: func(c cpu.CPU) { load8(c, &c.Registers().L, c.Registers().L) },
 	// LD L,(HL)
 	0x6E: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().L = c.Read(addr)
 	},
 	// LD L,A
 	0x6F: func(c cpu.CPU) { load8(c, &c.Registers().L, c.Registers().A) },
 	// LD (HL),B
 	0x70: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().B)
 	},
 	// LD (HL),C
 	0x71: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().C)
 	},
 	// LD (HL),D
 	0x72: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().D)
 	},
 	// LD (HL),E
 	0x73: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().E)
 	},
 	// LD (HL),H
 	0x74: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().H)
 	},
 	// LD (HL),L
 	0x75: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().L)
 	},
 	// HALT
 	0x76: func(c cpu.CPU) { c.Halt() },
 	// LD (HL),A
 	0x77: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Write(addr, c.Registers().A)
 	},
 	// LD A,B
@@ -361,7 +422,9 @@ var Instructions = [0x100]Instruction{
 	0x7D: func(c cpu.CPU) { load8(c, &c.Registers().A, c.Registers().L) },
 	// LD A,(HL)
 	0x7E: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		c.Registers().A = c.Read(addr)
 	},
 	// LD A,A
@@ -381,30 +444,34 @@ var Instructions = [0x100]Instruction{
 	// ADD A,(HL)
 	0x86: func(c cpu.CPU) {
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Clock()
 		val := c.Read(addr)
+		c.Ack()
 		add8(c, &c.Registers().A, val)
 	},
-	// ADD A,A
+	// ADD A
 	0x87: func(c cpu.CPU) { add8(c, &c.Registers().A, c.Registers().A) },
-	// ADC A,B
+	// ADC B
 	0x88: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().B) },
-	// ADC A,C
+	// ADC C
 	0x89: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().C) },
-	// ADC A,D
+	// ADC D
 	0x8A: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().D) },
-	// ADC A,E
+	// ADC E
 	0x8B: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().E) },
-	// ADC A,H
+	// ADC H
 	0x8C: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().H) },
-	// ADC A,L
+	// ADC L
 	0x8D: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().L) },
-	// ADC A,(HL)
+	// ADC (HL)
 	0x8E: func(c cpu.CPU) {
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Clock()
 		val := c.Read(addr)
+		c.Ack()
 		addc8(c, &c.Registers().A, val)
 	},
-	// ADC A,A
+	// ADC A
 	0x8F: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.Registers().A) },
 	// SUB B
 	0x90: func(c cpu.CPU) { sub8(c, &c.Registers().A, c.Registers().B) },
@@ -420,31 +487,35 @@ var Instructions = [0x100]Instruction{
 	0x95: func(c cpu.CPU) { sub8(c, &c.Registers().A, c.Registers().L) },
 	// SUB (HL)
 	0x96: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		val := c.Read(addr)
 		sub8(c, &c.Registers().A, val)
 	},
 	// SUB A
 	0x97: func(c cpu.CPU) { sub8(c, &c.Registers().A, c.Registers().A) },
-	// SBC A,B
+	// SBC B
 	0x98: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().B) },
-	// SBC A,C
+	// SBC C
 	0x99: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().C) },
-	// SBC A,D
+	// SBC D
 	0x9A: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().D) },
-	// SBC A,E
+	// SBC E
 	0x9B: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().E) },
-	// SBC A,H
+	// SBC H
 	0x9C: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().H) },
-	// SBC A,L
+	// SBC L
 	0x9D: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().L) },
-	// SBC A,(HL)
+	// SBC (HL)
 	0x9E: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 		val := c.Read(addr)
+		c.Ack()
 		subc8(c, &c.Registers().A, val)
 	},
-	// SBC A,A
+	// SBC A
 	0x9F: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.Registers().A) },
 	// AND B
 	0xA0: func(c cpu.CPU) { and8(c, &c.Registers().A, c.Registers().B) },
@@ -460,8 +531,11 @@ var Instructions = [0x100]Instruction{
 	0xA5: func(c cpu.CPU) { and8(c, &c.Registers().A, c.Registers().L) },
 	// AND (HL)
 	0xA6: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 		val := c.Read(addr)
+		c.Ack()
+
 		and8(c, &c.Registers().A, val)
 	},
 	// AND A
@@ -480,8 +554,10 @@ var Instructions = [0x100]Instruction{
 	0xAD: func(c cpu.CPU) { xor8(c, &c.Registers().A, c.Registers().L) },
 	// XOR (HL)
 	0xAE: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 		val := c.Read(addr)
+		c.Ack()
 		xor8(c, &c.Registers().A, val)
 	},
 	// XOR A
@@ -500,7 +576,9 @@ var Instructions = [0x100]Instruction{
 	0xB5: func(c cpu.CPU) { or8(c, &c.Registers().A, c.Registers().L) },
 	// OR (HL)
 	0xB6: func(c cpu.CPU) {
+		c.Clock()
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
 		val := c.Read(addr)
 		or8(c, &c.Registers().A, val)
 	},
@@ -521,7 +599,9 @@ var Instructions = [0x100]Instruction{
 	// CP (HL)
 	0xBE: func(c cpu.CPU) {
 		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Clock()
 		val := c.Read(addr)
+		c.Ack()
 		cp8(c, c.Registers().A, val)
 		a := 1
 		_ = a
@@ -543,7 +623,7 @@ var Instructions = [0x100]Instruction{
 	// ADD A,d8
 	0xC6: func(c cpu.CPU) { add8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 00H
-	0xC7: func(c cpu.CPU) { rst(c, 0x00) },
+	0xC7: func(c cpu.CPU) { call(c, 0x00, true) },
 	// RET Z
 	0xC8: func(c cpu.CPU) { ret(c, c.Flags().Zero) },
 	// RET
@@ -559,7 +639,7 @@ var Instructions = [0x100]Instruction{
 	// ADC A,d8
 	0xCE: func(c cpu.CPU) { addc8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 08H
-	0xCF: func(c cpu.CPU) { rst(c, 0x08) },
+	0xCF: func(c cpu.CPU) { call(c, 0x08, true) },
 	// RET NC
 	0xD0: func(c cpu.CPU) { ret(c, !c.Flags().Carry) },
 	// POP DE
@@ -574,7 +654,7 @@ var Instructions = [0x100]Instruction{
 	// SUB d8
 	0xD6: func(c cpu.CPU) { sub8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 10H
-	0xD7: func(c cpu.CPU) { rst(c, 0x10) },
+	0xD7: func(c cpu.CPU) { call(c, 0x10, true) },
 	// RET C
 	0xD8: func(c cpu.CPU) { ret(c, c.Flags().Carry) },
 	// RETI
@@ -588,10 +668,10 @@ var Instructions = [0x100]Instruction{
 	// CALL C,a16
 	0xDC: func(c cpu.CPU) { call(c, c.GetImmediate16(), c.Flags().Carry) },
 	// INVALID
-	// SBC A,d8
+	// SBC d8
 	0xDE: func(c cpu.CPU) { subc8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 18H
-	0xDF: func(c cpu.CPU) { rst(c, 0x18) },
+	0xDF: func(c cpu.CPU) { call(c, 0x18, true) },
 	// LDH (a8),A
 	0xE0: func(c cpu.CPU) {
 		addr := 0xFF00 + uint16(c.GetImmediate8())
@@ -611,7 +691,7 @@ var Instructions = [0x100]Instruction{
 	// AND d8
 	0xE6: func(c cpu.CPU) { and8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 20H
-	0xE7: func(c cpu.CPU) { rst(c, 0x20) },
+	0xE7: func(c cpu.CPU) { call(c, 0x20, true) },
 	// ADD SP,r8
 	0xE8: func(c cpu.CPU) { addSPr8(c) },
 	// JP (HL)
@@ -619,7 +699,9 @@ var Instructions = [0x100]Instruction{
 	// LD (a16),A
 	0xEA: func(c cpu.CPU) {
 		addr := c.GetImmediate16()
+		c.Clock()
 		c.Write(addr, c.Registers().A)
+		c.Ack()
 	},
 	// INVALID
 	// INVALID
@@ -627,17 +709,24 @@ var Instructions = [0x100]Instruction{
 	// XOR d8
 	0xEE: func(c cpu.CPU) { xor8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 28H
-	0xEF: func(c cpu.CPU) { rst(c, 0x28) },
+	0xEF: func(c cpu.CPU) { call(c, 0x28, true) },
 	// LDH A,(a8)
 	0xF0: func(c cpu.CPU) {
-		addr := 0xFF00 + uint16(c.GetImmediate8())
+		addr := uint16(c.GetImmediate8())
+
+		c.Clock()
+		addr += 0xFF00
+		c.Ack()
+
 		c.Registers().A = c.Read(addr)
 	},
 	// POP AF
 	0xF1: func(c cpu.CPU) { popAF(c) },
 	// LD A,(C)
 	0xF2: func(c cpu.CPU) {
+		c.Clock()
 		addr := 0xFF00 + uint16(c.Registers().C)
+		c.Ack()
 		c.Registers().A = c.Read(addr)
 	},
 	// DI
@@ -650,18 +739,26 @@ var Instructions = [0x100]Instruction{
 	// OR d8
 	0xF6: func(c cpu.CPU) { or8(c, &c.Registers().A, c.GetImmediate8()) },
 	// RST 30H
-	0xF7: func(c cpu.CPU) { rst(c, 0x30) },
+	0xF7: func(c cpu.CPU) { call(c, 0x30, true) },
 	// LD HL,SP+r8
 	0xF8: func(c cpu.CPU) {
 		immediate := int8(c.GetImmediate8())
 		loadHLSPOffset(c, immediate)
 	},
 	// LD SP,HL
-	0xF9: func(c cpu.CPU) { c.Registers().SP = cpu.ToRegisterPair(c.Registers().H, c.Registers().L) },
+	0xF9: func(c cpu.CPU) {
+		c.Clock()
+		addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
+		c.Ack()
+
+		c.Registers().SP = addr
+	},
 	// LD A,(a16)
 	0xFA: func(c cpu.CPU) {
 		addr := c.GetImmediate16()
+		c.Clock()
 		c.Registers().A = c.Read(addr)
+		c.Ack()
 	},
 	// EI
 	0xFB: func(c cpu.CPU) { c.EIWithDelay() },
@@ -670,5 +767,5 @@ var Instructions = [0x100]Instruction{
 	// CP d8
 	0xFE: func(c cpu.CPU) { cp8(c, c.Registers().A, c.GetImmediate8()) },
 	// RST 38H
-	0xFF: func(c cpu.CPU) { rst(c, 0x38) },
+	0xFF: func(c cpu.CPU) { call(c, 0x38, true) },
 }

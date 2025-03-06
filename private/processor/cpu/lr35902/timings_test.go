@@ -110,28 +110,36 @@ func runCyclesTest(t *testing.T, opcode uint8, ticks int, condition bool, adjust
 		adjust(cpu)
 	}
 
-	// Use a buffered channel to hold exactly 'ticks' ticks.
-	manualClock := make(chan struct{}, ticks)
-	cpu.clock = manualClock
-
+	// Create buffered channels with exactly the required capacity.
+	counted := 0
+	manualClock := make(chan struct{})
+	manualAck := make(chan struct{})
 	done := make(chan struct{})
+	cpu.clock = manualClock
+	cpu.clockAck = manualAck
 
-	// Run the CPU in a separate goroutine.
 	go func() {
 		cpu.MClock()
-		close(done)
+		done <- struct{}{}
 	}()
 
-	// Send exactly the ticks we expect.
-	for range ticks {
-		manualClock <- struct{}{}
+LOOP:
+	for {
+		select {
+		case manualClock <- struct{}{}:
+			<-manualAck
+			counted++
+		case <-done:
+			break LOOP
+		case <-time.After(1 * time.Second):
+			t.Fatalf("opcode 0x%X did not complete in time", opcode)
+			return
+		}
 	}
 
-	// Wait for CPU to finish instruction execution.
-	select {
-	case <-done:
-		// Optionally, you could add a check here if the CPU exposes its cycle count.
-	case <-time.After(100 * time.Millisecond):
-		t.Errorf("opcode 0x%X did not complete within the timeout, w/ %d ticks", opcode, ticks)
+	if counted != ticks {
+		t.Errorf("opcode 0x%X completed in %d ticks, want %d", opcode, counted, ticks)
+	} else {
+		t.Logf("opcode 0x%X completed in %d ticks", opcode, ticks)
 	}
 }

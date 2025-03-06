@@ -116,14 +116,21 @@ func generateCbInstructions() [0x100]Instruction {
 				gen := firstHalfCbInstructionsHelper[y]
 				if x == 6 {
 					CBInstructions[opcode] = func(c cpu.CPU) {
+						c.Clock()
 						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 						val := c.Read(addr)
+						c.Ack()
+
 						gen(&val)(c)
 
 						// If the instruction is BIT, don't write back to memory.
 						if opcode>>6 != 0x1 {
 							c.Write(addr, val)
 						}
+
+						c.Clock()
+						// TODO
+						c.Ack()
 
 					}
 				} else {
@@ -138,14 +145,20 @@ func generateCbInstructions() [0x100]Instruction {
 				gen := secondHalfCbInstructionsHelper[y]
 				if x == 14 {
 					CBInstructions[opcode] = func(c cpu.CPU) {
+						c.Clock()
 						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
 						val := c.Read(addr)
+						c.Ack()
+
 						gen(&val)(c)
 
 						// If the instruction is BIT, don't write back to memory.
 						if opcode>>6 != 0x1 {
 							c.Write(addr, val)
 						}
+						c.Clock()
+						// TODO
+						c.Ack()
 					}
 				} else {
 					CBInstructions[opcode] = func(c cpu.CPU) {

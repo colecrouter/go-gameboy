@@ -12,10 +12,8 @@ type CPU interface {
 	Registers() *registers.Registers
 	Read(uint16) uint8
 	Write(uint16, uint8)
-	Read16(uint16) (uint8, uint8)
-	Write16(uint16, uint16)
 	Clock()
-	IncrementPC()
+	Ack()
 	Halt()
 	Stop()
 	EI()

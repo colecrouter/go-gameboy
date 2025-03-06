@@ -122,7 +122,7 @@ func TestRst(t *testing.T) {
 			cpu.Registers().PC = tt.initialPC
 			cpu.Registers().SP = tt.initialSP
 
-			rst(cpu, tt.rstAddress)
+			call(cpu, tt.rstAddress, true)
 
 			assert.Equal(t, tt.expectedPC, cpu.Registers().PC, "unexpected PC value")
 			assert.Equal(t, tt.expectedSP, cpu.Registers().SP, "unexpected SP value")

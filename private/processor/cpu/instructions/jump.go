@@ -10,7 +10,10 @@ func jump(c cpu.CPU, addr uint16, condition bool) {
 		return
 	}
 
+	c.Clock()
 	c.Registers().PC = addr - 1
+	c.Ack()
+
 }
 
 // JumpRelative now adds 2 to account for the two-byte instruction length.
@@ -22,7 +25,10 @@ func jumpRelative(c cpu.CPU, offset int8, condition bool) {
 	// Add 2 to account for the two-byte instruction length.
 	// Then, subtract 1 for GetImmediate8's increment, and 1 again for the PC increment.
 	// Woo, look we didn't have to add anything.
+
+	c.Clock()
 	c.Registers().PC = uint16(int32(c.Registers().PC) + int32(offset))
+	c.Ack()
 }
 
 // Subroutines
@@ -30,13 +36,23 @@ func ret(c cpu.CPU, condition bool) {
 	if !condition {
 		return
 	}
+	c.Clock()
+	c.Ack()
 
-	// Pop the return address in little-endian order.
-	high, low := c.Read16(c.Registers().SP)
-	c.Registers().SP += 2
+	c.Clock()
+	low := c.Read(c.Registers().SP)
+	c.Registers().SP++
+	c.Ack()
 
+	c.Clock()
+	high := c.Read(c.Registers().SP)
+	c.Registers().SP++
+	c.Ack()
+
+	c.Clock()
 	addr := cpu.ToRegisterPair(high, low)
 	c.Registers().PC = addr - 1 // Adjust for later PC increment
+	c.Ack()
 }
 
 func call(c cpu.CPU, addr uint16, condition bool) {
@@ -47,21 +63,38 @@ func call(c cpu.CPU, addr uint16, condition bool) {
 	// Theoretically, we want to set up the stack so that RET drops us exactly 1 PC before the next instruction.
 	// However, the value pushed onto the stack matters. In the case of the Game Boy, the value pushed is the address
 	// At this point in the CALL instruction (3 bytes long) we will be at initial PC + 2, so add 1 to get the correct return address.
-	retAddr := c.Registers().PC + 1
+	high, low := cpu.FromRegisterPair(c.Registers().PC + 1)
 
-	c.Registers().SP -= 2
-	c.Write16(c.Registers().SP, retAddr)
-	// Subtract 1 to account for the later PC increment.
+	c.Clock()
+	c.Registers().SP--
+	c.Write(c.Registers().SP, high)
+	c.Ack()
+
+	c.Clock()
+	c.Registers().SP--
+	c.Write(c.Registers().SP, low)
+	c.Ack()
+
+	c.Clock()
 	c.Registers().PC = addr - 1
+	c.Ack()
 }
 
-func rst(c cpu.CPU, addr uint16) {
-	// For RST, instruction size is 1 byte.
-	// There is no immediate offset or anything like that, so we need to add 1 to return after the instruction.
-	retAddr := c.Registers().PC + 1
+// func rst(c cpu.CPU, addr uint16) {
+// 	// For RST, instruction size is 1 byte.
+// 	// There is no immediate offset or anything like that, so we need to add 1 to return after the instruction.
+// 	// retAddr := c.Registers().PC + 1
+// 	high, low := cpu.FromRegisterPair(c.Registers().PC + 1)
 
-	c.Registers().SP -= 2
-	c.Write16(c.Registers().SP, retAddr)
+// 	c.Clock()
+// 	c.Registers().SP--
+// 	c.Write(c.Registers().SP, low)
+// 	c.Ack()
 
-	c.Registers().PC = addr - 1
-}
+// 	c.Clock()
+// 	c.Registers().SP--
+// 	c.Write(c.Registers().SP, high)
+// 	c.Ack()
+
+// 	c.Registers().PC = addr - 1
+// }

@@ -2,6 +2,8 @@ package lr35902
 
 import (
 	"testing"
+
+	"github.com/colecrouter/gameboy-go/private/processor/cpu"
 )
 
 func TestByteLengths(t *testing.T) {
@@ -47,11 +49,12 @@ func TestByteLengths(t *testing.T) {
 			// Preload clock ticks equal to the expected instruction length and close the channel.
 			ticks := instrLengths[i]
 			manualClock := make(chan struct{}, ticks)
-			for j := 0; j < ticks; j++ {
+			for j := 0; j < int(ticks); j++ {
 				manualClock <- struct{}{}
 			}
 			close(manualClock)
 			cpu.clock = manualClock
+			cpu.clockAck = make(chan struct{}, ticks+10) // New ack channel
 
 			cpu.MClock()
 
@@ -113,5 +116,25 @@ func TestCyclesCB(t *testing.T) {
 			ticks := instrCyclesCB[i] - 1
 			runCyclesTest(t, uint8(i), ticks, false, adjust)
 		})
+	}
+}
+
+func TestJPHL(t *testing.T) {
+	c, mem, _ := newTestCPU()
+	jumpTarget := uint16(0x1234)
+	c.registers.H, c.registers.L = cpu.FromRegisterPair(jumpTarget)
+	mem.Write(0, 0xE9) // JP (HL) opcode
+
+	// Preload clock with enough ticks (assume 1 tick is sufficient)
+	manualClock := make(chan struct{}, 1)
+	manualClock <- struct{}{}
+	close(manualClock)
+	c.clock = manualClock
+	c.clockAck = make(chan struct{}, 10) // New ack channel
+
+	c.MClock()
+
+	if c.registers.PC != jumpTarget {
+		t.Errorf("JP (HL) failed: got PC %d, want %d", c.registers.PC, jumpTarget)
 	}
 }

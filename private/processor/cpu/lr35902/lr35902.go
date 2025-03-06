@@ -27,12 +27,12 @@ type LR35902 struct {
 	lastPC      uint16
 	halted      bool
 	clock       <-chan struct{}
+	clockAck    chan<- struct{}
 
 	logger logging.Logger
 }
 
 // step executes the next instruction in the CPU's memory.
-// Returns the number of T-cycles the instruction took.
 func (c *LR35902) MClock() {
 	if !c.initialized {
 		panic("CPU not initialized")
@@ -69,7 +69,7 @@ func (c *LR35902) MClock() {
 	if c.halted {
 		// We need to process a cycle here so that the CPU still runs and checks for interrupts
 		// If we return 0, the process will hang, as it will continue to clock empty cycles without stopping or checking for interrupts
-		<-c.clock
+		c.ClockAndAck()
 
 		// Skip the instruction execution stage
 		return
@@ -94,7 +94,21 @@ func (c *LR35902) MClock() {
 
 	c.lastPC = c.registers.PC
 
-	if c.registers.PC == 0x29e2 {
+	// if c.registers.PC == 0x29d0 {
+	// 	if c.registers.A&0b1111 != 0b1111 {
+	// 		fmt.Printf("")
+	// 	}
+	// }
+
+	if mnemonic == "DI" {
+		fmt.Printf("")
+	}
+
+	if c.registers.PC == 0xc2bc {
+		fmt.Printf("")
+	}
+
+	if c.registers.PC == 0xc2c5 {
 		fmt.Printf("")
 	}
 
@@ -110,14 +124,14 @@ func (c *LR35902) MClock() {
 	}
 
 	c.registers.PC++
-	<-c.clock
+	c.ClockAndAck()
 }
 
 func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *io.Registers, ie *io.Interrupt) *LR35902 {
 	cpu := &LR35902{initialized: true}
 
 	if broadcaster != nil {
-		cpu.clock = broadcaster.Subscribe(system.MRisingEdge)
+		cpu.clock, cpu.clockAck = broadcaster.Subscribe(system.MRisingEdge)
 	}
 	cpu.bus = bus
 	cpu.io = ioRegisters
@@ -149,7 +163,9 @@ func (c *LR35902) printStack() []uint16 {
 		if offset > 0xFFFE {
 			break
 		}
-		stack[j] = cpu.ToRegisterPair(c.bus.Read16(uint16(offset)))
+		low := c.bus.Read(uint16(offset))
+		high := c.bus.Read(uint16(offset + 1))
+		stack[j] = cpu.ToRegisterPair(high, low)
 	}
 
 	return stack[0:j]
