@@ -5,11 +5,12 @@ import (
 
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/io"
-	"github.com/colecrouter/gameboy-go/private/processor/cpu"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/shared"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/logging"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/registers"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 	"github.com/colecrouter/gameboy-go/private/system"
 )
 
@@ -60,9 +61,8 @@ func (c *LR35902) MClock() {
 		}
 	}
 
-	var instruction instructions.Instruction
+	var instruction shared.Instruction
 	var mnemonic string
-	var op func(cpu.CPU)
 	var opcode uint8
 
 	// Check for HALT mode
@@ -90,8 +90,6 @@ func (c *LR35902) MClock() {
 
 	_ = mnemonic
 
-	op = instruction
-
 	c.lastPC = c.registers.PC
 
 	// if c.registers.PC == 0x29d0 {
@@ -113,7 +111,20 @@ func (c *LR35902) MClock() {
 	}
 
 	// Execute instruction
-	op(c)
+	ctx := &shared.Context{}
+	for _, op := range instruction {
+		<-c.clock
+		extra := op(c, ctx)
+		c.clockAck <- struct{}{}
+
+		if extra != nil {
+			for _, e := range *extra {
+				<-c.clock
+				e(c, ctx)
+				c.clockAck <- struct{}{}
+			}
+		}
+	}
 
 	// Update DI and EI delay
 	if c.eiDelay > 0 {
@@ -122,9 +133,6 @@ func (c *LR35902) MClock() {
 			c.ime = true
 		}
 	}
-
-	c.registers.PC++
-	c.ClockAndAck()
 }
 
 func NewLR35902(broadcaster *system.Broadcaster, bus *memory.Bus, ioRegisters *io.Registers, ie *io.Interrupt) *LR35902 {
@@ -165,7 +173,7 @@ func (c *LR35902) printStack() []uint16 {
 		}
 		low := c.bus.Read(uint16(offset))
 		high := c.bus.Read(uint16(offset + 1))
-		stack[j] = cpu.ToRegisterPair(high, low)
+		stack[j] = helpers.ToRegisterPair(high, low)
 	}
 
 	return stack[0:j]

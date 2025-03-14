@@ -1,4 +1,4 @@
-package instructions
+package generators
 
 import (
 	"testing"
@@ -42,7 +42,7 @@ func TestDecimalAdjust(t *testing.T) {
 			cpu.Flags().HalfCarry = tt.halfCarry
 			cpu.Flags().Carry = tt.carry
 
-			decimalAdjust(cpu)
+			cpu.Execute(DecimalAdjust())
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")

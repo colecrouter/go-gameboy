@@ -1,8 +1,10 @@
-package instructions
+package generators
 
 import (
 	"testing"
 
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/conditions"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,10 +26,15 @@ func TestJump(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().PC = tt.initialPC
 
-			jump(cpu, tt.jumpAddress, tt.condition)
+			// Set immediate data
+			cpu.Memory[tt.initialPC+1], cpu.Memory[tt.initialPC+2] = helpers.FromRegisterPair(tt.jumpAddress)
+
+			// Set condition
+			cpu.Flags().Zero = tt.condition
+
+			cpu.Execute(Jump(conditions.Z))
 
 			assert.Equal(t, tt.expectedPC, cpu.Registers().PC, "unexpected PC value")
-			// No flag assertions in jump; leave unchanged.
 		})
 	}
 }
@@ -52,7 +59,13 @@ func TestJumpRelative(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().PC = tt.initialPC
 
-			jumpRelative(cpu, tt.offset, tt.condition)
+			// Set condition
+			cpu.Flags().Zero = tt.condition
+
+			// Set immediate data
+			cpu.Memory[tt.initialPC+1] = uint8(tt.offset)
+
+			cpu.Execute(JumpRelative(conditions.Z))
 
 			assert.Equal(t, tt.expectedPC, cpu.Registers().PC, "unexpected PC value")
 		})
@@ -83,7 +96,10 @@ func TestRet(t *testing.T) {
 			cpu.Memory[cpu.Registers().SP] = uint8(tt.stackAddress & 0xFF)
 			cpu.Memory[cpu.Registers().SP+1] = uint8((tt.stackAddress >> 8) & 0xFF)
 
-			ret(cpu, tt.condition)
+			// Set condition
+			cpu.Flags().Zero = tt.condition
+
+			cpu.Execute(Return(conditions.Z))
 
 			assert.Equal(t, tt.expectedPC, cpu.Registers().PC, "unexpected PC value")
 			assert.Equal(t, tt.clockCalled, cpu.ClockCalled, "unexpected clock call")
@@ -122,7 +138,7 @@ func TestRst(t *testing.T) {
 			cpu.Registers().PC = tt.initialPC
 			cpu.Registers().SP = tt.initialSP
 
-			call(cpu, tt.rstAddress, true)
+			cpu.Execute(ResetPC(tt.rstAddress))
 
 			assert.Equal(t, tt.expectedPC, cpu.Registers().PC, "unexpected PC value")
 			assert.Equal(t, tt.expectedSP, cpu.Registers().SP, "unexpected SP value")
@@ -130,7 +146,7 @@ func TestRst(t *testing.T) {
 			// Check that return address was pushed correctly
 			pushedLow := cpu.Memory[cpu.Registers().SP]
 			pushedHigh := cpu.Memory[cpu.Registers().SP+1]
-			returnAddr := (uint16(pushedHigh) << 8) | uint16(pushedLow)
+			returnAddr := helpers.ToRegisterPair(pushedHigh, pushedLow)
 			assert.Equal(t, tt.initialPC+1, returnAddr, "incorrect return address pushed to stack")
 		})
 	}
@@ -145,7 +161,12 @@ func TestCall(t *testing.T) {
 		cpu.Registers().SP = 0xFFF0
 
 		// Use call to branch to 0x1234 when condition true.
-		call(cpu, 0x1234, true)
+
+		// Set immediate data.
+		cpu.Memory[cpu.Registers().PC+1] = 0x34
+		cpu.Memory[cpu.Registers().PC+2] = 0x12
+
+		cpu.Execute(Call(conditions.Always))
 
 		// Expected return address is initial PC + 1 (we had to read the immediate operand).
 		expectedRetAddr := uint16(0x0101)
@@ -160,7 +181,7 @@ func TestCall(t *testing.T) {
 		// Check that the return address was pushed correctly.
 		pushedLow := cpu.Memory[cpu.Registers().SP]
 		pushedHigh := cpu.Memory[cpu.Registers().SP+1]
-		returnAddr := (uint16(pushedHigh) << 8) | uint16(pushedLow)
+		returnAddr := helpers.ToRegisterPair(pushedHigh, pushedLow)
 		assert.Equal(t, expectedRetAddr, returnAddr, "incorrect return address pushed to stack")
 	})
 
@@ -171,8 +192,11 @@ func TestCall(t *testing.T) {
 		cpu.Registers().PC = 0x0100
 		cpu.Registers().SP = 0xFFF0
 
-		// When condition is false, call should leave PC and SP unchanged.
-		call(cpu, 0x1234, false)
+		cpu.Flags().Zero = false
+
+		cpu.Execute(Call(conditions.Z))
+
+		// Should leave PC and SP unchanged.
 		assert.Equal(t, uint16(0x0100), cpu.Registers().PC, "unexpected PC value")
 		assert.Equal(t, uint16(0xFFF0), cpu.Registers().SP, "SP should remain unchanged")
 	})

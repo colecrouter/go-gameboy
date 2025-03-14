@@ -1,9 +1,9 @@
 package lr35902
 
 import (
-	"github.com/colecrouter/gameboy-go/private/processor/cpu"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/registers"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 )
 
 func (c LR35902) ClockAndAck() {
@@ -32,7 +32,7 @@ func (c *LR35902) GetImmediate16() uint16 {
 	high := c.bus.Read(c.registers.PC)
 	c.Ack()
 
-	return cpu.ToRegisterPair(high, low)
+	return helpers.ToRegisterPair(high, low)
 }
 
 func (c *LR35902) Read(addr uint16) byte {

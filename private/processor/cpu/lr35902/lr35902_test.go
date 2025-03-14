@@ -3,7 +3,7 @@ package lr35902
 import (
 	"testing"
 
-	"github.com/colecrouter/gameboy-go/private/processor/cpu"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 )
 
 func TestByteLengths(t *testing.T) {
@@ -122,7 +122,7 @@ func TestCyclesCB(t *testing.T) {
 func TestJPHL(t *testing.T) {
 	c, mem, _ := newTestCPU()
 	jumpTarget := uint16(0x1234)
-	c.registers.H, c.registers.L = cpu.FromRegisterPair(jumpTarget)
+	c.registers.H, c.registers.L = helpers.FromRegisterPair(jumpTarget)
 	mem.Write(0, 0xE9) // JP (HL) opcode
 
 	// Preload clock with enough ticks (assume 1 tick is sufficient)

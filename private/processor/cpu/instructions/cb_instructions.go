@@ -1,6 +1,11 @@
 package instructions
 
-import "github.com/colecrouter/gameboy-go/private/processor/cpu"
+import (
+	. "github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/enums"
+	. "github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/generators"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/operands"
+	"github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/shared"
+)
 
 // All of the CB instructions are all the same per first bit
 // The only difference is the register that the instruction operates on
@@ -8,101 +13,91 @@ import "github.com/colecrouter/gameboy-go/private/processor/cpu"
 
 // Here we'll define two arrays of helper functions to help us construct the final instruction map
 
-type instructionGenerator func(*uint8) func(cpu.CPU)
+type instructionGenerator func(operands.Operand[uint8]) []shared.MicroOp
 
 var firstHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RLC
-	func(u *uint8) func(cpu.CPU) {
-		return func(c cpu.CPU) { rotate(c, u, true, false, true) }
-	},
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Rotate(u, true, false, true) },
 	// RL
-	func(u *uint8) func(cpu.CPU) {
-		return func(c cpu.CPU) { rotate(c, u, true, true, true) }
-	},
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Rotate(u, true, true, true) },
 	// SLA
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { shift(c, u, true, false) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Shift(u, true, false) },
 	// SWAP
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { swap(c, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Swap(u) },
 	// BIT 0, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 0, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 0) },
 	// BIT 2, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 2, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 2) },
 	// BIT 4, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 4, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 4) },
 	// BIT 6, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 6, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 6) },
 	// RES 0, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 0, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 0) },
 	// RES 2, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 2, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 2) },
 	// RES 4, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 4, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 4) },
 	// RES 6, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 6, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 6) },
 	// SET 0, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 0, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 0) },
 	// SET 2, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 2, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 2) },
 	// SET 4, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 4, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 4) },
 	// SET 6, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 6, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 6) },
 }
 
 var secondHalfCbInstructionsHelper = [16]instructionGenerator{
 	// RRC
-	func(u *uint8) func(cpu.CPU) {
-		return func(c cpu.CPU) { rotate(c, u, false, false, true) }
-	},
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Rotate(u, false, false, true) },
 	// RR
-	func(u *uint8) func(cpu.CPU) {
-		return func(c cpu.CPU) { rotate(c, u, false, true, true) }
-	},
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Rotate(u, false, true, true) },
 	// SRA
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { shift(c, u, false, true) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Shift(u, false, true) },
 	// SRL
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { shift(c, u, false, false) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return Shift(u, false, false) },
 	// BIT 1, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 1, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 1) },
 	// BIT 3, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 3, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 3) },
 	// BIT 5, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 5, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 5) },
 	// BIT 7, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { bit(c, 7, *u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ReadBit(u, 7) },
 	// RES 1, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 1, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 1) },
 	// RES 3, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 3, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 3) },
 	// RES 5, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 5, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 5) },
 	// RES 7, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { res(c, 7, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return ResetBit(u, 7) },
 	// SET 1, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 1, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 1) },
 	// SET 3, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 3, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 3) },
 	// SET 5, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 5, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 5) },
 	// SET 7, X
-	func(u *uint8) func(cpu.CPU) { return func(c cpu.CPU) { set(c, 7, u) } },
+	func(u operands.Operand[uint8]) []shared.MicroOp { return SetBit(u, 7) },
 }
 
-func generateCbInstructions() [0x100]Instruction {
-	CBInstructions := [0x100]Instruction{}
+func generateCbInstructions() [0x100]shared.Instruction {
+	CBInstructions := [0x100]shared.Instruction{}
 
 	// Register mapping: indices 0-7 correspond to B, C, D, E, H, L, (HL), A.
-	regMapping := func(c cpu.CPU) [8]*uint8 {
-		return [8]*uint8{
-			&c.Registers().B,
-			&c.Registers().C,
-			&c.Registers().D,
-			&c.Registers().E,
-			&c.Registers().H,
-			&c.Registers().L,
-			nil, // (HL) handled specially below
-			&c.Registers().A,
-		}
+	regMapping := [8]operands.Operand[uint8]{
+		B,
+		C,
+		D,
+		E,
+		H,
+		L,
+		HL_,
+		A,
 	}
 
 	for y := range 16 {
@@ -114,59 +109,12 @@ func generateCbInstructions() [0x100]Instruction {
 			if x < 8 {
 				// First half: use y as the op code selector.
 				gen := firstHalfCbInstructionsHelper[y]
-				if x == 6 {
-					CBInstructions[opcode] = func(c cpu.CPU) {
-						c.Clock()
-						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
-						val := c.Read(addr)
-						c.Ack()
+				CBInstructions[opcode] = gen(regMapping[x])
 
-						gen(&val)(c)
-
-						// If the instruction is BIT, don't write back to memory.
-						if opcode>>6 != 0x1 {
-							c.Write(addr, val)
-						}
-
-						c.Clock()
-						// TODO
-						c.Ack()
-
-					}
-				} else {
-					CBInstructions[opcode] = func(c cpu.CPU) {
-						regs := regMapping(c)
-						target := regs[x]
-						gen(target)(c)
-					}
-				}
 			} else {
 				// Second half: use y as the op code selector.
 				gen := secondHalfCbInstructionsHelper[y]
-				if x == 14 {
-					CBInstructions[opcode] = func(c cpu.CPU) {
-						c.Clock()
-						addr := cpu.ToRegisterPair(c.Registers().H, c.Registers().L)
-						val := c.Read(addr)
-						c.Ack()
-
-						gen(&val)(c)
-
-						// If the instruction is BIT, don't write back to memory.
-						if opcode>>6 != 0x1 {
-							c.Write(addr, val)
-						}
-						c.Clock()
-						// TODO
-						c.Ack()
-					}
-				} else {
-					CBInstructions[opcode] = func(c cpu.CPU) {
-						regs := regMapping(c)
-						target := regs[x-8]
-						gen(target)(c)
-					}
-				}
+				CBInstructions[opcode] = gen(regMapping[x-8])
 			}
 
 		}

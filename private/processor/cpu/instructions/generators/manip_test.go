@@ -1,12 +1,13 @@
-package instructions
+package generators
 
 import (
 	"testing"
 
+	. "github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/enums"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInc8(t *testing.T) {
+func TestIncrement(t *testing.T) {
 	tests := []struct {
 		name      string
 		initial   uint8
@@ -23,19 +24,20 @@ func TestInc8(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			r := tt.initial
 
-			inc8(cpu, &r)
+			cpu.Registers().A = tt.initial
 
-			assert.Equal(t, tt.expected, r, "unexpected register value")
+			cpu.Execute(Increment(A))
+
+			assert.Equal(t, tt.expected, tt.initial, "unexpected register value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
-			assert.Equal(t, false, cpu.Flags().Subtract, "Subtract flag should be reset")
+			assert.False(t, cpu.Flags().Subtract, "Subtract flag should be reset")
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected Half-carry flag")
 		})
 	}
 }
 
-func TestInc16(t *testing.T) {
+func TestIncrement16(t *testing.T) {
 	tests := []struct {
 		name         string
 		initialHigh  uint8
@@ -56,7 +58,10 @@ func TestInc16(t *testing.T) {
 			high := tt.initialHigh
 			low := tt.initialLow
 
-			inc16(cpu, &high, &low)
+			cpu.Registers().B = tt.initialHigh
+			cpu.Registers().C = tt.initialLow
+
+			cpu.Execute(Increment16(BC))
 
 			assert.Equal(t, tt.expectedHigh, high, "unexpected high byte value")
 			assert.Equal(t, tt.expectedLow, low, "unexpected low byte value")
@@ -81,13 +86,14 @@ func TestDec8(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			r := tt.initial
 
-			dec8(cpu, &r)
+			cpu.Registers().A = tt.initial
 
-			assert.Equal(t, tt.expected, r, "unexpected register value")
+			cpu.Execute(Decrement(A))
+
+			assert.Equal(t, tt.expected, tt.initial, "unexpected register value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
-			assert.Equal(t, true, cpu.Flags().Subtract, "Subtract flag should be set")
+			assert.True(t, cpu.Flags().Subtract, "Subtract flag should be set")
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected Half-carry flag")
 		})
 	}
@@ -113,7 +119,10 @@ func TestDec16(t *testing.T) {
 			high := tt.initialHigh
 			low := tt.initialLow
 
-			dec16(cpu, &high, &low)
+			cpu.Registers().B = tt.initialHigh
+			cpu.Registers().C = tt.initialLow
+
+			cpu.Execute(Decrement16(BC))
 
 			assert.Equal(t, tt.expectedHigh, high, "unexpected high byte value")
 			assert.Equal(t, tt.expectedLow, low, "unexpected low byte value")

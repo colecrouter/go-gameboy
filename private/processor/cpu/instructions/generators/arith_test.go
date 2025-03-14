@@ -1,12 +1,14 @@
-package instructions
+package generators
 
 import (
 	"testing"
 
+	. "github.com/colecrouter/gameboy-go/private/processor/cpu/instructions/enums"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAdd8(t *testing.T) {
+func TestAdd(t *testing.T) {
 	tests := []struct {
 		name       string
 		initialA   uint8
@@ -28,8 +30,9 @@ func TestAdd8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
+			cpu.Registers().B = tt.valueToAdd
 
-			add8(cpu, &cpu.Registers().A, tt.valueToAdd)
+			cpu.Execute(Add(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -59,17 +62,13 @@ func TestAdd16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			cpu.Registers().H, cpu.Registers().L = uint8(tt.initialHL>>8), uint8(tt.initialHL&0xFF)
-			highVal, lowVal := uint8(tt.valueToAdd>>8), uint8(tt.valueToAdd&0xFF)
+			cpu.Registers().H, cpu.Registers().L = helpers.FromRegisterPair(tt.initialHL)
+			cpu.Registers().B, cpu.Registers().C = helpers.FromRegisterPair(tt.valueToAdd)
 
-			// Set initial flags to make sure they're properly modified
-			cpu.Flags().Zero = true // should remain unchanged
+			cpu.Execute(Add16(HL, BC))
 
-			add16(cpu, &cpu.Registers().H, &cpu.Registers().L, highVal, lowVal)
-
-			actualHL := (uint16(cpu.Registers().H) << 8) | uint16(cpu.Registers().L)
-			assert.Equal(t, tt.expectedHL, actualHL, "unexpected HL value")
-			assert.Equal(t, true, cpu.Flags().Zero, "Zero flag should remain unchanged")
+			assert.Equal(t, tt.expectedHL, helpers.ToRegisterPair(cpu.Registers().H, cpu.Registers().L), "unexpected HL value")
+			assert.True(t, cpu.Flags().Zero, "Zero flag should remain unchanged")
 			assert.Equal(t, tt.expectedN, cpu.Flags().Subtract, "unexpected Subtract flag")
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected HalfCarry flag")
 			assert.Equal(t, tt.expectedC, cpu.Flags().Carry, "unexpected Carry flag")
@@ -97,8 +96,9 @@ func TestSub8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
+			cpu.Registers().B = tt.valueToSub
 
-			sub8(cpu, &cpu.Registers().A, tt.valueToSub)
+			cpu.Execute(Sub(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -126,8 +126,9 @@ func TestAnd8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
+			cpu.Registers().B = tt.valueToAnd
 
-			and8(cpu, &cpu.Registers().A, tt.valueToAnd)
+			cpu.Execute(And(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -155,8 +156,7 @@ func TestOr8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
-
-			or8(cpu, &cpu.Registers().A, tt.valueToOr)
+			cpu.Registers().B = tt.valueToOr
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -184,8 +184,9 @@ func TestXor8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
+			cpu.Registers().B = tt.valueToXor
 
-			xor8(cpu, &cpu.Registers().A, tt.valueToXor)
+			cpu.Execute(Xor(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -220,8 +221,9 @@ func TestAddc8(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
 			cpu.Flags().Carry = tt.initialCarry
+			cpu.Registers().B = tt.valueToAdd
 
-			addc8(cpu, &cpu.Registers().A, tt.valueToAdd)
+			cpu.Execute(AddC(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -257,8 +259,9 @@ func TestSubc8(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
 			cpu.Flags().Carry = tt.initialCarry
+			cpu.Registers().B = tt.valueToSub
 
-			subc8(cpu, &cpu.Registers().A, tt.valueToSub)
+			cpu.Execute(SubC(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
@@ -288,9 +291,11 @@ func TestAddSPr8(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().SP = tt.initialSP
-			cpu.Immediate8 = uint8(tt.offset)
 
-			addSPr8(cpu)
+			// Set immediate value in memory
+			cpu.Memory[cpu.Registers().PC+1] = uint8(tt.offset)
+
+			cpu.Execute(AddSPImmediate())
 
 			assert.Equal(t, tt.expectedSP, cpu.Registers().SP, "unexpected SP value")
 			assert.Equal(t, false, cpu.Flags().Zero, "Zero flag should be reset")

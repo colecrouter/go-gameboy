@@ -2,7 +2,7 @@ package lr35902
 
 import (
 	"github.com/colecrouter/gameboy-go/private/memory/io"
-	"github.com/colecrouter/gameboy-go/private/processor/cpu"
+	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 )
 
 func (c *LR35902) isr(isr ISR) {
@@ -35,7 +35,7 @@ func (c *LR35902) isr(isr ISR) {
 	// Push PC onto stack
 	// This consumes an additional 2 m-cycles
 
-	highPC, lowPC := cpu.FromRegisterPair(c.registers.PC)
+	highPC, lowPC := helpers.FromRegisterPair(c.registers.PC)
 	c.Clock()
 	c.Registers().SP--
 	c.Write(c.registers.SP, highPC)
