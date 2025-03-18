@@ -22,6 +22,8 @@ func (c Condition) Test(flags *flags.Flags) bool {
 		return !flags.Carry
 	case C:
 		return flags.Carry
+	case Always:
+		return true
 	}
 	return false
 }

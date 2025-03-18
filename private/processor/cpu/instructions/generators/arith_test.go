@@ -65,6 +65,8 @@ func TestAdd16(t *testing.T) {
 			cpu.Registers().H, cpu.Registers().L = helpers.FromRegisterPair(tt.initialHL)
 			cpu.Registers().B, cpu.Registers().C = helpers.FromRegisterPair(tt.valueToAdd)
 
+			cpu.Flags().Zero = true
+
 			cpu.Execute(Add16(HL, BC))
 
 			assert.Equal(t, tt.expectedHL, helpers.ToRegisterPair(cpu.Registers().H, cpu.Registers().L), "unexpected HL value")
@@ -157,6 +159,8 @@ func TestOr8(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().A = tt.initialA
 			cpu.Registers().B = tt.valueToOr
+
+			cpu.Execute(Or(A, B))
 
 			assert.Equal(t, tt.expectedA, cpu.Registers().A, "unexpected A value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")

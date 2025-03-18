@@ -7,24 +7,32 @@ import (
 	"github.com/colecrouter/gameboy-go/private/processor/helpers"
 )
 
+/*
+	This file contains predicate functions that are meant to be used while
+	constructing instruction generators. They return procedures that abstract
+	away common patterns, such as getting an immediate value into a register.
+
+	Their goal is to make the instruction generators more readable.
+*/
+
 // Immediate8IntoZ reads the immediate 8-bit value into the Z register.
 func Immediate8IntoZ(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
-	// Increment PC
-	c.Registers().PC++
-
 	// Read the value into Z
 	ctx.Z = c.Read(c.Registers().PC)
+
+	// Increment PC
+	c.Registers().PC++
 
 	return nil
 }
 
 // Immediate8IntoW reads the immediate 8-bit value into the W register.
 func Immediate8IntoW(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
-	// Increment PC
-	c.Registers().PC++
-
 	// Read the value into W
 	ctx.W = c.Read(c.Registers().PC)
+
+	// Increment PC
+	c.Registers().PC++
 
 	return nil
 }
@@ -128,11 +136,18 @@ func StackIntoW(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 	return nil
 }
 
-// Idle increments the program counter without doing anything.
-func Idle(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
+// NextPC increments the program counter without doing anything.
+func NextPC(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 	// Do nothing
 	c.Registers().PC++
 
+	return nil
+}
+
+// Idle does nothing. It is meant to be used in specific cases (such as jump instructions)
+// where a clock cycle is needed, but PC should not be incremented. In most cases, NextPC
+// should be used instead.
+func Idle(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 	return nil
 }
 
@@ -224,6 +239,17 @@ func IndirectImmediateIntoZ(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 	return nil
 }
 
+// IndirectImmediateIntoW reads the value at the immediate address into the W register.
+func IndirectImmediateIntoW(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
+	// Increment PC
+	c.Registers().PC++
+
+	// Read the value at the immediate address into W
+	ctx.W = c.Read(helpers.ToRegisterPair(c.Read(c.Registers().PC), c.Read(c.Registers().PC+1)))
+
+	return nil
+}
+
 // IndirectImmediateFromZ writes the value in Z to the immediate address.
 func IndirectImmediateFromZ(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 	// Increment PC
@@ -231,6 +257,17 @@ func IndirectImmediateFromZ(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 
 	// Write the value in Z to the immediate address
 	c.Write(helpers.ToRegisterPair(c.Read(c.Registers().PC), c.Read(c.Registers().PC+1)), ctx.Z)
+
+	return nil
+}
+
+// IndirectImmediateFromW writes the value in W to the immediate address.
+func IndirectImmediateFromW(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
+	// Increment PC
+	c.Registers().PC++
+
+	// Write the value in W to the immediate address
+	c.Write(helpers.ToRegisterPair(c.Read(c.Registers().PC), c.Read(c.Registers().PC+1)), ctx.W)
 
 	return nil
 }

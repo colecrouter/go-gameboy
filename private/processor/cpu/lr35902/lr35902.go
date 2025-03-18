@@ -1,8 +1,6 @@
 package lr35902
 
 import (
-	"fmt"
-
 	"github.com/colecrouter/gameboy-go/private/memory"
 	"github.com/colecrouter/gameboy-go/private/memory/io"
 	"github.com/colecrouter/gameboy-go/private/processor/cpu/flags"
@@ -90,6 +88,12 @@ func (c *LR35902) MClock() {
 
 	_ = mnemonic
 
+	immediate8 := c.bus.Read(c.registers.PC + 1)
+	immediate16 := helpers.ToRegisterPair(c.bus.Read(c.registers.PC+2), c.bus.Read(c.registers.PC+1))
+
+	_ = immediate8
+	_ = immediate16
+
 	c.lastPC = c.registers.PC
 
 	// if c.registers.PC == 0x29d0 {
@@ -98,25 +102,12 @@ func (c *LR35902) MClock() {
 	// 	}
 	// }
 
-	if mnemonic == "DI" {
-		fmt.Printf("")
-	}
-
-	if c.registers.PC == 0xc2bc {
-		fmt.Printf("")
-	}
-
-	if c.registers.PC == 0xc2c5 {
-		fmt.Printf("")
-	}
-
 	// Execute instruction
 	ctx := &shared.Context{}
 	for _, op := range instruction {
 		<-c.clock
 		extra := op(c, ctx)
 		c.clockAck <- struct{}{}
-
 		if extra != nil {
 			for _, e := range *extra {
 				<-c.clock

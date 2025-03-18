@@ -94,16 +94,16 @@ func (m *MockCPU) PrefixCB() {
 func (m *MockCPU) Execute(ops shared.Instruction) {
 	// Execute instruction
 	ctx := &shared.Context{}
+
+	// Simulate the PC increment of the last instruction.
+	m.regs.PC++
+
 	for _, op := range ops {
-		<-m.clock
 		extra := op(m, ctx)
-		m.clockAck <- struct{}{}
 
 		if extra != nil {
 			for _, e := range *extra {
-				<-m.clock
 				e(m, ctx)
-				m.clockAck <- struct{}{}
 			}
 		}
 	}

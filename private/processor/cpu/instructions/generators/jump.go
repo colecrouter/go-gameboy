@@ -14,70 +14,51 @@ func Jump(condition conditions.Condition) []shared.MicroOp {
 		Immediate8IntoW,
 	}
 
-	ops = append(ops, func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
+	return append(ops, func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 		if condition.Test(c.Flags()) {
 			return &[]shared.MicroOp{
 				func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
-					c.Registers().PC = helpers.ToRegisterPair(ctx.W, ctx.Z)
+					c.Registers().PC = helpers.ToRegisterPair(ctx.Z, ctx.W)
 					return nil
 				},
 				Idle,
 			}
 		} else {
-			return &[]shared.MicroOp{
-				Idle,
-			}
+			return nil
 		}
-	})
-
-	return ops
+	}, NextPC)
 }
 
 func JumpRelative(condition conditions.Condition) []shared.MicroOp {
 	ops := []shared.MicroOp{
-		Immediate8IntoZ,
+		func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
+			// Read the immediate value into Z
+			c.Registers().PC++
+			ctx.Z = c.Read(c.Registers().PC)
+			return nil
+		},
 	}
 
 	return append(ops, func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 		if condition.Test(c.Flags()) {
-			// Get separate bits from PC
-			high, low := helpers.FromRegisterPair(c.Registers().PC)
+			// Get current PC
+			pc := c.Registers().PC
 
-			// Cast to signed 8-bit integer, store back in Z
-			lowSigned := int8(low)
-			ctx.Z = uint8(int16(high) + int16(lowSigned))
+			// Calculate new address
+			newAddr := uint16(int16(pc) + int16(int8(ctx.Z)))
 
-			// Get the carry from the 7th bit
-			carry := (low & 0x80) != 0
-
-			// Get the sign of Z
-			sign := (ctx.Z & 0x80) != 0
-
-			// Calculate the adjustment
-			var adj int8
-			if carry && !sign {
-				adj = 1
-			} else if !carry && sign {
-				adj = -1
-			} else {
-				adj = 0
-			}
-
-			// Set W to the high byte of PC plus the adjustment
-			ctx.W = high + uint8(adj)
+			ctx.W, ctx.Z = helpers.FromRegisterPair(newAddr)
 
 			return &[]shared.MicroOp{
 				func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
-					c.Registers().PC = uint16(int32(c.Registers().PC)+int32(ctx.Z)) + 1
+					c.Registers().PC = uint16(helpers.ToRegisterPair(ctx.W, ctx.Z))
 					return nil
 				},
 			}
 		} else {
-			return &[]shared.MicroOp{
-				Idle,
-			}
+			return nil
 		}
-	})
+	}, NextPC)
 }
 
 func JumpHL() []shared.MicroOp {
@@ -93,14 +74,12 @@ func JumpHL() []shared.MicroOp {
 
 // Subroutines
 func Return(condition conditions.Condition) []shared.MicroOp {
-	ops := []shared.MicroOp{
-		Idle,
-	}
+	var ops []shared.MicroOp
 
 	if condition != conditions.Always {
-		// I think this is supposed to be a cycle to evaluate the condition
-		// Not sure
-		ops = append(ops, Idle)
+		ops = []shared.MicroOp{
+			Idle,
+		}
 	}
 
 	return append(ops, func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
@@ -112,7 +91,7 @@ func Return(condition conditions.Condition) []shared.MicroOp {
 			}
 		} else {
 			return &[]shared.MicroOp{
-				Idle,
+				NextPC,
 			}
 		}
 	})
@@ -123,6 +102,7 @@ func ReturnInterrupt() []shared.MicroOp {
 		StackIntoZ,
 		StackIntoW,
 		JumpToWZSetIME,
+		NextPC,
 	}
 }
 func Call(condition conditions.Condition) []shared.MicroOp {
@@ -133,12 +113,10 @@ func Call(condition conditions.Condition) []shared.MicroOp {
 
 	return append(ops, func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 		if condition.Test(c.Flags()) {
+			// Decrement SP
+			c.Registers().SP--
+
 			return &[]shared.MicroOp{
-				// Decrement SP
-				func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
-					c.Registers().SP--
-					return nil
-				},
 				// Push MSB of PC onto the stack
 				func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 					high, _ := helpers.FromRegisterPair(c.Registers().PC)
@@ -159,11 +137,9 @@ func Call(condition conditions.Condition) []shared.MicroOp {
 				},
 			}
 		} else {
-			return &[]shared.MicroOp{
-				Idle,
-			}
+			return nil
 		}
-	})
+	}, NextPC)
 }
 func ResetPC(addr uint16) []shared.MicroOp {
 	return []shared.MicroOp{

@@ -29,7 +29,7 @@ func TestIncrement(t *testing.T) {
 
 			cpu.Execute(Increment(A))
 
-			assert.Equal(t, tt.expected, tt.initial, "unexpected register value")
+			assert.Equal(t, tt.expected, cpu.Registers().A, "unexpected register value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
 			assert.False(t, cpu.Flags().Subtract, "Subtract flag should be reset")
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected Half-carry flag")
@@ -55,13 +55,13 @@ func TestIncrement16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			high := tt.initialHigh
-			low := tt.initialLow
 
 			cpu.Registers().B = tt.initialHigh
 			cpu.Registers().C = tt.initialLow
 
 			cpu.Execute(Increment16(BC))
+
+			high, low := cpu.Registers().B, cpu.Registers().C
 
 			assert.Equal(t, tt.expectedHigh, high, "unexpected high byte value")
 			assert.Equal(t, tt.expectedLow, low, "unexpected low byte value")
@@ -91,7 +91,7 @@ func TestDec8(t *testing.T) {
 
 			cpu.Execute(Decrement(A))
 
-			assert.Equal(t, tt.expected, tt.initial, "unexpected register value")
+			assert.Equal(t, tt.expected, cpu.Registers().A, "unexpected register value")
 			assert.Equal(t, tt.expectedZ, cpu.Flags().Zero, "unexpected Zero flag")
 			assert.True(t, cpu.Flags().Subtract, "Subtract flag should be set")
 			assert.Equal(t, tt.expectedH, cpu.Flags().HalfCarry, "unexpected Half-carry flag")
@@ -116,13 +116,13 @@ func TestDec16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			high := tt.initialHigh
-			low := tt.initialLow
 
 			cpu.Registers().B = tt.initialHigh
 			cpu.Registers().C = tt.initialLow
 
 			cpu.Execute(Decrement16(BC))
+
+			high, low := cpu.Registers().B, cpu.Registers().C
 
 			assert.Equal(t, tt.expectedHigh, high, "unexpected high byte value")
 			assert.Equal(t, tt.expectedLow, low, "unexpected low byte value")

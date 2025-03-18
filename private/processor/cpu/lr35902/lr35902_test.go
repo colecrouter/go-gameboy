@@ -49,7 +49,7 @@ func TestByteLengths(t *testing.T) {
 			// Preload clock ticks equal to the expected instruction length and close the channel.
 			ticks := instrLengths[i]
 			manualClock := make(chan struct{}, ticks)
-			for j := 0; j < int(ticks); j++ {
+			for range ticks {
 				manualClock <- struct{}{}
 			}
 			close(manualClock)
@@ -61,7 +61,35 @@ func TestByteLengths(t *testing.T) {
 			if int(cpu.registers.PC) != instrLengths[i] {
 				t.Errorf("PC: got %d, want %d", cpu.registers.PC, instrLengths[i])
 			} else {
-				t.Logf("PC: got %d", cpu.registers.PC)
+				// t.Logf("PC: got %d", cpu.registers.PC)
+			}
+		})
+	}
+}
+
+func TestCBByteLengths(t *testing.T) {
+	for i := range uint8(0xFF) {
+		t.Run(getCBMnemonic(uint8(i)), func(t *testing.T) {
+			cpu, mem, _ := newTestCPU()
+			cpu.registers.PC = 0
+			// Write CB prefix and opcode for the CB instruction.
+			mem.Write(0, 0xCB)
+			mem.Write(1, uint8(i))
+
+			// Preload clock ticks required for the CB instruction.
+			manualClock := make(chan struct{}, 2)
+			for range 2 {
+				manualClock <- struct{}{}
+			}
+			close(manualClock)
+			cpu.clock = manualClock
+			cpu.clockAck = make(chan struct{}, 10)
+
+			cpu.MClock() // Execute the CB instruction
+			cpu.MClock() // Execute the actual instruction
+
+			if cpu.registers.PC != 2 {
+				t.Errorf("CB instruction %02X: PC: got %d, want 2", i, cpu.registers.PC)
 			}
 		})
 	}

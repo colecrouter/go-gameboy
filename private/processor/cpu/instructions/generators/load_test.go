@@ -22,9 +22,11 @@ func TestLoad8(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			var r uint8
+			cpu.Registers().B = tt.value
 
 			cpu.Execute(Load(A, B))
+
+			r := cpu.Registers().A
 
 			assert.Equal(t, tt.expected, r, "unexpected loaded value")
 		})
@@ -46,10 +48,7 @@ func TestLoad16(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cpu := newMockCPU()
-			high, low := helpers.FromRegisterPair(tt.value)
-
-			cpu.Registers().C = high
-			cpu.Registers().B = low
+			cpu.Registers().B, cpu.Registers().C = helpers.FromRegisterPair(tt.value)
 
 			cpu.Execute(Load16(HL, BC))
 
@@ -79,8 +78,8 @@ func TestPop16(t *testing.T) {
 
 			// Write the value to pop in little-endian order
 			high, low := helpers.FromRegisterPair(tt.stackValue)
-			cpu.Write(initialSP, low)
-			cpu.Write(initialSP+1, high)
+			cpu.Write(initialSP, high)
+			cpu.Write(initialSP+1, low)
 
 			cpu.Execute(Pop(HL))
 
@@ -114,8 +113,8 @@ func TestPush16(t *testing.T) {
 			cpu.Execute(Push(HL))
 
 			assert.Equal(t, initialSP-2, cpu.Registers().SP, "SP should be decremented by 2")
-			assert.Equal(t, tt.lowValue, cpu.Memory[cpu.Registers().SP], "unexpected low byte on stack")
-			assert.Equal(t, tt.highValue, cpu.Memory[cpu.Registers().SP+1], "unexpected high byte on stack")
+			assert.Equal(t, tt.lowValue, cpu.Memory[cpu.Registers().SP+1], "unexpected low byte on stack")
+			assert.Equal(t, tt.highValue, cpu.Memory[cpu.Registers().SP], "unexpected high byte on stack")
 		})
 	}
 }
@@ -229,9 +228,9 @@ func TestLoadHLSPOffset(t *testing.T) {
 			cpu := newMockCPU()
 			cpu.Registers().SP = tt.initialSP
 
-			cpu.Registers().A = uint8(tt.offset)
+			cpu.Memory[cpu.Registers().PC+1] = uint8(tt.offset)
 
-			cpu.Execute(LoadHLSPOffset(A))
+			cpu.Execute(LoadHLSPOffset())
 
 			actualHL := helpers.ToRegisterPair(cpu.Registers().H, cpu.Registers().L)
 			assert.Equal(t, tt.expectedHL, actualHL, "unexpected HL value")

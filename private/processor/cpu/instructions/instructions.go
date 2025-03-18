@@ -24,7 +24,7 @@ var Instructions = [0x100]shared.Instruction{
 	// RLCA: h.Rotate A left circularly (ignore previous carry)
 	0x07: Rotate(A, true, false, false),
 	// LD (a16),SP
-	0x08: Load16(D16, SP), // ???
+	0x08: Load16(A16_, SP), // ???
 	// ADD HL,BC
 	0x09: Add16(HL, BC),
 	// LD A,(BC)
@@ -72,7 +72,7 @@ var Instructions = [0x100]shared.Instruction{
 	// RRA
 	0x1F: Rotate(A, false, true, false),
 	// JR NZ,r8
-	0x20: JumpRelative(Zero),
+	0x20: JumpRelative(NotZero),
 	// LD HL,d16
 	0x21: Load16(HL, D16),
 	// LD (HL+),A
@@ -104,7 +104,7 @@ var Instructions = [0x100]shared.Instruction{
 	// CPL
 	0x2F: ComplementAcc(),
 	// JR NC,r8
-	0x30: JumpRelative(Carry),
+	0x30: JumpRelative(NotCarry),
 	// LD SP,d16
 	0x31: Load16(SP, D16),
 	// LD (HL-),A
@@ -453,11 +453,11 @@ var Instructions = [0x100]shared.Instruction{
 	// ResetPC 18H
 	0xDF: ResetPC(0x18),
 	// LDH (a8),A
-	0xE0: Load(A8_, A),
+	0xE0: LoadHigh(A8_, A),
 	// POP HL
 	0xE1: Pop(HL),
-	// LD (C),A
-	0xE2: Load(C_, A),
+	// LDH (C),A
+	0xE2: LoadHigh(C_, A),
 	// INVALID
 	// INVALID
 	// PUSH HL
@@ -480,11 +480,11 @@ var Instructions = [0x100]shared.Instruction{
 	// ResetPC 28H
 	0xEF: ResetPC(0x28),
 	// LDH A,(a8)
-	0xF0: Load(A, A8_),
+	0xF0: LoadHigh(A, A8_),
 	// POP AF
 	0xF1: Pop(AF),
-	// LD A,(C)
-	0xF2: Load(A, C_),
+	// LDH A,(C)
+	0xF2: LoadHigh(A, C_),
 	// DI
 	0xF3: DisableInterrupts(),
 	// INVALID
@@ -495,7 +495,7 @@ var Instructions = [0x100]shared.Instruction{
 	// ResetPC 30H
 	0xF7: ResetPC(0x30),
 	// LD HL,SP+r8
-	0xF8: LoadHLSPOffset(D8),
+	0xF8: LoadHLSPOffset(),
 	// LD SP,HL
 	0xF9: Load16(SP, HL),
 	// LD A,(a16)

@@ -37,6 +37,8 @@ func DecimalAdjust() []shared.MicroOp {
 			c.Flags().HalfCarry = false
 			c.Flags().Carry = ((offset & 0x60) != 0)
 
+			c.Registers().PC++
+
 			return nil
 		},
 	}
@@ -46,6 +48,8 @@ func Stop() []shared.MicroOp {
 	return []shared.MicroOp{
 		func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 			c.Stop()
+
+			c.Registers().PC++
 
 			return nil
 		},
@@ -57,6 +61,8 @@ func Halt() []shared.MicroOp {
 		func(c cpu.CPU, ctx *shared.Context) *[]shared.MicroOp {
 			c.Halt()
 
+			c.Registers().PC++
+
 			return nil
 		},
 	}
@@ -64,7 +70,7 @@ func Halt() []shared.MicroOp {
 
 func Nop() []shared.MicroOp {
 	return []shared.MicroOp{
-		Idle,
+		NextPC,
 	}
 }
 
